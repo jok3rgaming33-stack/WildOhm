@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WildOhm — prompts Suno</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%2310110d' width='32' height='32'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23e4ff3a'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="stripe" aria-hidden="true"></div>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <p class="eyebrow">Suno V5 · sur cette machine · rien n'est envoyé</p>
+        <div class="brand-row">
+          <h1>WildOhm</h1>
+          <p class="stamp">Hors<br>ligne</p>
+        </div>
+        <p class="lede">Prompts pour le psytrance, la hardtek, le hardcore, l'acide et la trance. Les références restent ici. Suno reçoit le son, jamais le nom.</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" id="btn-vary" class="btn ghost">Varier la graine</button>
+        <button type="button" id="btn-generate" class="btn acid">Générer</button>
+      </div>
+    </header>
+
+    <p class="formula" aria-label="Ordre du champ Style">
+      <span>Genre</span>
+      <span>Ambiance</span>
+      <span>Voix</span>
+      <span>Instruments</span>
+      <span>BPM</span>
+    </p>
+
+    <main>
+      <section class="panel" aria-label="Réglages">
+        <h2>Départs</h2>
+        <div id="presets" class="presets"></div>
+
+        <h2>Familles</h2>
+        <p class="hint">Clique pour monter l'intensité : off, 1, 2, 3. L'acide est le curseur, pas une case, parce qu'il se pose sur n'importe quel tempo.</p>
+        <div id="genres" class="genres"></div>
+
+        <div class="slider-block acid-block">
+          <div class="slider-label"><span>Acide</span><b id="acid-val">30</b></div>
+          <input id="acid" type="range" min="0" max="100" value="30">
+        </div>
+
+        <h2>Références</h2>
+        <p class="hint">Chaque nom est traduit en kick, basse, lead. Il ne sera pas écrit dans le prompt.</p>
+        <div id="artists" class="artists"></div>
+        <button type="button" id="btn-clear-artists" class="btn tiny ghost">Retirer les références</button>
+
+        <h2>Couleur</h2>
+        <div class="slider-block">
+          <div class="slider-label"><span>Nuit</span><b id="dark-val">40</b></div>
+          <input id="dark" type="range" min="0" max="100" value="40">
+        </div>
+        <div class="slider-block">
+          <div class="slider-label"><span>Tribal</span><b id="tribal-val">40</b></div>
+          <input id="tribal" type="range" min="0" max="100" value="40">
+        </div>
+        <div class="slider-block">
+          <div class="slider-label"><span>Mélodie</span><b id="melodic-val">40</b></div>
+          <input id="melodic" type="range" min="0" max="100" value="40">
+        </div>
+        <div class="slider-block">
+          <div class="slider-label"><span>Énergie</span><b id="energy-val">65</b></div>
+          <input id="energy" type="range" min="0" max="100" value="65">
+        </div>
+
+        <h2>Voix et forme</h2>
+        <label class="field">
+          <span>Voix</span>
+          <select id="vocal">
+            <option value="instrumental">Instrumental</option>
+            <option value="chops">Chops rythmiques</option>
+            <option value="chant">Chant rituel</option>
+            <option value="mc">MC crié</option>
+            <option value="trance">Voix trance</option>
+            <option value="whisper">Chuchoté</option>
+          </select>
+        </label>
+        <label class="field" id="gender-wrap">
+          <span>Timbre</span>
+          <select id="gender">
+            <option value="femme">Femme</option>
+            <option value="homme">Homme</option>
+          </select>
+        </label>
+        <label class="field" id="lang-wrap">
+          <span>Langue chantée</span>
+          <select id="lang">
+            <option value="fr">Français</option>
+            <option value="en">Anglais</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Thème des paroles</span>
+          <input id="theme" type="text" maxlength="42" placeholder="forêt, hangar, route de nuit…" autocomplete="off">
+        </label>
+        <p class="hint">Le thème entre dans le titre et les paroles. Pas dans le Style : Suno s'y perd.</p>
+        <label class="field">
+          <span>Tonalité</span>
+          <select id="key">
+            <option value="auto">Auto</option>
+            <option>A minor</option>
+            <option>A# minor</option>
+            <option>B minor</option>
+            <option>C minor</option>
+            <option>C# minor</option>
+            <option>D minor</option>
+            <option>D# minor</option>
+            <option>E minor</option>
+            <option>F minor</option>
+            <option>F# minor</option>
+            <option>G minor</option>
+            <option>G# minor</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Structure</span>
+          <select id="length">
+            <option value="standard">Club</option>
+            <option value="extended">Longue</option>
+          </select>
+        </label>
+
+        <h2>Tempo</h2>
+        <label class="check">
+          <input id="bpm-auto" type="checkbox" checked>
+          <span>BPM automatique, calé sur la famille</span>
+        </label>
+        <div class="slider-block">
+          <div class="slider-label"><span>BPM manuel</span><b id="bpm-val">146</b></div>
+          <input id="bpm" type="range" min="130" max="205" value="146">
+        </div>
+        <p class="hint">Bouger le curseur verrouille le tempo. 145 et 185 dans le même prompt, Suno n'en choisit qu'un — d'où les trois cartes.</p>
+
+        <h2>Ordre des mots</h2>
+        <div class="seg">
+          <button type="button" data-lex="scene" class="on">Scène d'abord</button>
+          <button type="button" data-lex="model">Mot Suno d'abord</button>
+        </div>
+        <p class="hint">Les deux mots restent. Suno pèse surtout le début. Si la piste dérive, passe le mot connu devant.</p>
+
+        <label class="field">
+          <span>Graine</span>
+          <input id="seed" type="number" min="1" step="1" value="1">
+        </label>
+        <p class="hint">Même graine et mêmes réglages : mêmes textes. Ctrl + Entrée régénère.</p>
+      </section>
+
+      <section class="out" aria-label="Prompts">
+        <div id="diagnosis" class="diagnosis"></div>
+        <p class="howto"><b>Dans Suno, mode Custom.</b> Style : genre, ambiance, voix, instruments, BPM chiffré, 8 à 15 tags. Paroles : <code>[Intro]</code> <code>[Verse]</code> <code>[Pre-Chorus]</code> <code>[Chorus]</code> <code>[Bridge]</code> <code>[Outro]</code>. Électro : <code>[Build]</code> <code>[Drop]</code>. Jeu : <code>[Belted]</code> <code>[Whispered]</code> <code>[Spoken]</code> <code>[Choir]</code> <code>[Harmony]</code>. Pas de nom d'artiste.</p>
+        <div id="cards"></div>
+        <div id="history"></div>
+      </section>
+    </main>
+  </div>
+  <div id="toast" role="status"></div>
+  <script src="data.js"></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
