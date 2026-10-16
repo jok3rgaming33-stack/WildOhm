@@ -269,6 +269,32 @@ select, input[type="text"], input[type="number"], textarea {
   border-radius: 0;
 }
 
+.field textarea,
+input[type="file"] {
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.4;
+}
+
+input[type="file"] {
+  width: 100%;
+  font-size: 13px;
+  padding: 6px 0;
+}
+
+.audio-report {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-left: 4px solid var(--acid);
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.audio-report.warning {
+  background: #f3ddb8;
+  color: var(--warn);
+}
+
 .seg { display: flex; gap: 8px; }
 
 .seg button {

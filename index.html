@@ -119,6 +119,8 @@
             <option>G# minor</option>
           </select>
         </label>
+        <p id="key-help" class="hint"></p>
+        <button type="button" id="btn-key-demo" class="btn tiny ghost">Écouter 2 secondes</button>
         <label class="field">
           <span>Structure</span>
           <select id="length">
@@ -126,6 +128,23 @@
             <option value="extended">Longue</option>
           </select>
         </label>
+
+        <h2>Demandes</h2>
+        <label class="field">
+          <span>Une par ligne</span>
+          <textarea id="demands" rows="4" spellcheck="false" placeholder="Drop à 01:30&#10;Break plus long&#10;Plus de 303"></textarea>
+        </label>
+        <p id="demands-preview" class="hint"></p>
+        <p class="hint">Le texte est traduit dans le prompt. Une heure devient un repère entre crochets : Suno ne vise pas la seconde. Copier une mélodie, des paroles ou un nom d'artiste est refusé.</p>
+
+        <h2>Base audio</h2>
+        <p class="hint">Le fichier reste dans le navigateur. Rien n'est envoyé. On mesure le tempo, l'énergie, la nuit et la tonalité. La mélodie, les paroles et l'arrangement ne sont pas repris.</p>
+        <label class="field">
+          <span>Fichier</span>
+          <input id="audio-file" type="file" accept="audio/*">
+        </label>
+        <p id="audio-report" class="audio-report" hidden></p>
+        <button type="button" id="btn-apply-audio" class="btn tiny ghost" hidden>Appliquer tempo, énergie, nuit et tonalité</button>
 
         <h2>Tempo</h2>
         <label class="check">
@@ -154,7 +173,7 @@
 
       <section class="out" aria-label="Prompts">
         <div id="diagnosis" class="diagnosis"></div>
-        <p class="howto"><b>Dans Suno, mode Custom.</b> Style : genre, ambiance, voix, instruments, BPM chiffré, 8 à 15 tags. Paroles : <code>[Intro]</code> <code>[Verse]</code> <code>[Pre-Chorus]</code> <code>[Chorus]</code> <code>[Bridge]</code> <code>[Outro]</code>. Électro : <code>[Build]</code> <code>[Drop]</code>. Jeu : <code>[Belted]</code> <code>[Whispered]</code> <code>[Spoken]</code> <code>[Choir]</code> <code>[Harmony]</code>. Pas de nom d'artiste.</p>
+        <p class="howto"><b>Dans Suno, mode Custom.</b> Style : genre, ambiance, voix, instruments, BPM chiffré, 8 à 15 tags. Paroles : <code>[Intro]</code> <code>[Verse]</code> <code>[Pre-Chorus]</code> <code>[Chorus]</code> <code>[Bridge]</code> <code>[Outro]</code>. Électro : <code>[Build]</code> <code>[Drop]</code>. Jeu : <code>[Belted]</code> <code>[Whispered]</code> <code>[Spoken]</code> <code>[Choir]</code> <code>[Harmony]</code>. Pas de nom d'artiste. Une base audio ne donne que le tempo, l'énergie, la nuit et la tonalité.</p>
         <div id="cards"></div>
         <div id="history"></div>
       </section>
@@ -163,6 +182,7 @@
   <div id="toast" role="status"></div>
   <script src="data.js"></script>
   <script src="engine.js"></script>
+  <script src="ear.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

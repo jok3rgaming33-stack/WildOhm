@@ -463,7 +463,8 @@
       bpm: state.bpm || 146,
       length: state.length || "standard",
       lexicon: state.lexicon || "scene",
-      seed: state.seed || 1
+      seed: state.seed || 1,
+      demands: state.demands || ""
     };
   }
 
@@ -779,6 +780,35 @@
     return sungLyrics(lang, theme, extended, rng);
   }
 
+  function weaveCues(lyrics, cues) {
+    var text = lyrics;
+    var anchors = [
+      { tag: "[Drop]", stem: "[drop" },
+      { tag: "[Build]", stem: "[build" },
+      { tag: "[Bridge]", stem: "[bridge", alt: "[longer bridge" },
+      { tag: "[Chorus]", stem: "[chorus" },
+      { tag: "[Intro]", stem: "[intro" },
+      { tag: "[Outro]", stem: "[outro" }
+    ];
+    (cues || []).forEach(function (cue) {
+      if (!cue || text.indexOf(cue) !== -1) return;
+      var low = cue.toLowerCase();
+      var placed = false;
+      for (var i = 0; i < anchors.length; i++) {
+        var anchor = anchors[i];
+        var starts = low.indexOf(anchor.stem) === 0;
+        var related = !starts && anchor.alt && low.indexOf(anchor.alt) === 0;
+        if (!starts && !related) continue;
+        if (text.indexOf(anchor.tag) === -1) continue;
+        text = starts ? text.replace(anchor.tag, cue) : text.replace(anchor.tag, anchor.tag + "\n" + cue);
+        placed = true;
+        break;
+      }
+      if (!placed && text.indexOf("[Outro]") !== -1) text = text.replace("[Outro]", cue + "\n[Outro]");
+    });
+    return text;
+  }
+
   function makeTitle(lane, theme, rng) {
     var clean = safeTheme(theme);
     if (clean && clean.length <= 22 && clean.indexOf(".") === -1 && rng() < 0.45) {
@@ -788,10 +818,10 @@
     return bank[Math.floor(rng() * bank.length)];
   }
 
-  function assemble(genres, mood, vocal, instruments, bpm) {
+  function assemble(genres, mood, vocal, instruments, extras, bpm) {
     var head = genres.slice(0, 2).concat([mood, vocal]);
     var body = [];
-    instruments.forEach(function (tag) {
+    (extras || []).concat(instruments).forEach(function (tag) {
       if (body.length >= 8) return;
       if (head.indexOf(tag) !== -1 || body.indexOf(tag) !== -1) return;
       body.push(tag);
@@ -812,6 +842,87 @@
       else if (index === tags.length - 1) role = "bpm";
       return { text: text, role: role };
     });
+  }
+
+  var DEMAND_BLOCK = /copi|plagi|m[eê]me m[eé]lod|reprend|cover|\bidentiqu|paroles du|à l'identique|a l'identique|sample le|clone/i;
+
+  function clockOf(line) {
+    var match = String(line).match(/(\d{1,2})\s*[:h]\s*(\d{2})/);
+    if (!match) return "";
+    var min = Math.min(14, Number(match[1]));
+    var sec = Math.min(59, Number(match[2]));
+    return (min < 10 ? "0" : "") + min + ":" + (sec < 10 ? "0" : "") + sec;
+  }
+
+  function cueFromLine(line) {
+    var low = line.toLowerCase();
+    var at = clockOf(line);
+    var tail = at ? " at " + at : "";
+    if (/drop/.test(low)) return "[Drop" + tail + "]";
+    if (/build|mont[ée]e|montee/.test(low)) return "[Build" + tail + "]";
+    if (/break|pont|bridge/.test(low)) {
+      return (/\blong/.test(low) ? "[Longer bridge" : "[Bridge") + tail + "]";
+    }
+    if (/\bintro\b/.test(low)) return "[Intro" + tail + "]";
+    if (/outro|finale/.test(low)) return "[Outro" + tail + "]";
+    if (/refrain|chorus/.test(low)) return "[Chorus" + tail + "]";
+    if (at) return "[Section at " + at + "]";
+    return "";
+  }
+
+  function sonicFromLine(line) {
+    var low = line.toLowerCase();
+    var bpm = low.match(/(\d{2,3})\s*bpm/);
+    if (bpm) {
+      return { patch: { bpm: clamp(Number(bpm[1]), 120, 210), bpmAuto: false } };
+    }
+    if (/303|acide|acid/.test(low)) return { tag: "resonant TB-303 squelch" };
+    if (/didgeridoo|didj|tribal/.test(low)) return { tag: "didgeridoo lead" };
+    if (/sans voix|instrumental/.test(low)) return { patch: { vocal: "instrumental" } };
+    if (/chuchot|whisper/.test(low)) return { patch: { vocal: "whisper" } };
+    if (/\bmc\b|cri[ée]e?/.test(low)) return { patch: { vocal: "mc" } };
+    return null;
+  }
+
+  function interpretDemands(raw) {
+    var lines = String(raw || "").split(/\n+/).map(function (line) {
+      return line.trim();
+    }).filter(Boolean).slice(0, 8);
+    var out = { cues: [], styleTags: [], patches: {}, blocked: [], hints: [] };
+    lines.forEach(function (original) {
+      var line = original;
+      if (containsBanned(line)) {
+        out.blocked.push(original);
+        out.hints.push("Nom d'artiste retiré : il ne part pas dans le prompt.");
+        return;
+      }
+      if (DEMAND_BLOCK.test(line)) {
+        out.blocked.push(original);
+        out.hints.push("Demande de copie refusée. On garde le tempo, l'énergie et la tonalité, pas la mélodie.");
+        return;
+      }
+      var cue = cueFromLine(line);
+      var sonic = sonicFromLine(line);
+      if (cue) out.cues.push(cue);
+      if (sonic) {
+        if (sonic.tag) out.styleTags.push(sonic.tag);
+        if (sonic.patch) {
+          Object.keys(sonic.patch).forEach(function (key) {
+            out.patches[key] = sonic.patch[key];
+          });
+        }
+      }
+      if (cue || sonic) return;
+      var clean = line.replace(/[\[\]\(\),]/g, " ").replace(/\s+/g, " ").trim().slice(0, 48);
+      if (clean) out.cues.push("[Direction: " + clean + "]");
+    });
+    if (out.cues.some(function (cue) { return /at \d/.test(cue); })) {
+      out.hints.push("Suno ne suit pas une horloge. L'heure devient un repère dans les paroles, pas une seconde exacte.");
+    }
+    out.cues = unique(out.cues).slice(0, 4);
+    out.styleTags = unique(out.styleTags).slice(0, 2);
+    out.hints = unique(out.hints);
+    return out;
   }
 
   function containsBanned(text) {
@@ -875,12 +986,20 @@
     if (genres.some(function (genre) { return genre.toLowerCase() === mood.toLowerCase(); })) {
       mood = "driving club energy";
     }
+    var demand = interpretDemands(tuned.demands);
+    if (demand.patches.vocal) tuned.vocal = demand.patches.vocal;
+    if (demand.patches.bpm) {
+      tuned.bpm = demand.patches.bpm;
+      tuned.bpmAuto = false;
+    }
     var vocalMode = tuned.vocal || "instrumental";
     var vocal = vocalTag(vocalMode, tuned.voiceGender);
     var instruments = buildInstruments(plan.lane, tuned, rng);
     var bpmInfo = resolveBpm(tuned, plan.lane, variant, rng);
-    var tags = assemble(genres, mood, vocal, instruments, bpmInfo.bpm);
-    var warnings = [];
+    var tags = assemble(genres, mood, vocal, instruments, demand.styleTags, bpmInfo.bpm);
+    var warnings = demand.blocked.map(function (line) {
+      return "Demande non reprise : " + line;
+    });
     if (bpmInfo.forced && (bpmInfo.bpm < bpmInfo.range[0] - 6 || bpmInfo.bpm > bpmInfo.range[1] + 6)) {
       warnings.push("BPM " + bpmInfo.bpm + " hors de la zone " + bpmInfo.range[0] + "–" + bpmInfo.range[1] + " pour " + LANE_FR[plan.lane] + ". Suno peut changer de genre.");
     }
@@ -899,7 +1018,7 @@
       genreCount: genres.length,
       style: tags.join(", "),
       exclude: excludesFor(plan.lane, vocalMode).join(", "),
-      lyrics: makeLyrics(tuned, rng),
+      lyrics: weaveCues(makeLyrics(tuned, rng), demand.cues),
       vocalTag: vocal,
       vocalMode: vocalMode,
       warnings: warnings,
@@ -961,6 +1080,7 @@
     generateTrio: generateTrio,
     diagnose: diagnose,
     selfCheck: selfCheck,
-    scoresOf: scoresOf
+    scoresOf: scoresOf,
+    interpretDemands: interpretDemands
   };
 })(typeof globalThis !== "undefined" ? globalThis : this);

@@ -5,9 +5,34 @@
   var ENGINE = globalThis.RITE_ENGINE;
   var STORE = "rite.suno.v1";
 
+  var EAR = globalThis.RITE_EAR;
   var state = defaultState();
   var history = [];
   var toastTimer = 0;
+  var audioReading = null;
+  var demoCtx = null;
+  var demoGains = [];
+
+  var KEY_HELP = {
+    auto: "Laisse Suno choisir. Le plus simple pour commencer.",
+    "A minor": "La plus courante en free et en psy. Directe, sombre, facile à suivre.",
+    "A# minor": "Un peu plus tendue que la mineur. Nuit, légère instabilité.",
+    "B minor": "Sombre mais ouverte. Ça passe en psy comme en trance.",
+    "C minor": "Lourde, grave, presque classique. Du poids.",
+    "C# minor": "Dramatique, un peu ciné. Utile pour une trance large.",
+    "D minor": "La plus mélancolique. Claire, un peu triste.",
+    "D# minor": "Épaisse et voilée. Rare, donc plus étrange.",
+    "E minor": "Plus naturelle, un peu rock. Moins club que la mineur.",
+    "F minor": "Nuit profonde. Très sombre, plutôt mental.",
+    "F# minor": "Froide et brillante. Souvent bien avec l'acide.",
+    "G minor": "Ronde, moins agressive. Un peu folk.",
+    "G# minor": "Serrée, métallique. Proche d'un hard techno froid."
+  };
+
+  var KEY_ROOT = {
+    "C": -9, "C#": -8, "D": -7, "D#": -6, "E": -5, "F": -4,
+    "F#": -3, "G": -2, "G#": -1, "A": 0, "A#": 1, "B": 2
+  };
 
   function defaultState() {
     return {
@@ -28,7 +53,8 @@
       bpm: 146,
       length: "standard",
       lexicon: "scene",
-      seed: 1
+      seed: 1,
+      demands: ""
     };
   }
 
@@ -40,6 +66,7 @@
     var bpmAuto = state.bpmAuto;
     var bpm = state.bpm;
     var theme = state.theme;
+    var demands = state.demands;
     state = defaultState();
     state.presetId = preset.id;
     state.seed = keepSeed ? seed : seed;
@@ -49,6 +76,7 @@
     state.bpmAuto = bpmAuto;
     state.bpm = bpm;
     state.theme = theme;
+    state.demands = demands || "";
     var g = preset.apply.genres || {};
     Object.keys(state.genres).forEach(function (id) {
       state.genres[id] = g[id] || 0;
@@ -183,6 +211,8 @@
     document.getElementById("lang").value = state.sungLang;
     document.getElementById("theme").value = state.theme;
     document.getElementById("key").value = state.key;
+    var demands = document.getElementById("demands");
+    if (demands && demands.value !== (state.demands || "")) demands.value = state.demands || "";
     document.getElementById("length").value = state.length;
     document.getElementById("seed").value = String(state.seed);
     document.getElementById("bpm-auto").checked = !!state.bpmAuto;
@@ -192,6 +222,128 @@
     document.querySelectorAll("[data-lex]").forEach(function (btn) {
       btn.classList.toggle("on", btn.getAttribute("data-lex") === state.lexicon);
     });
+    paintKeyHelp();
+    paintDemandPreview();
+  }
+
+  function paintKeyHelp() {
+    var key = state.key || "auto";
+    var text = KEY_HELP[key] || KEY_HELP.auto;
+    if (key === "auto") text += " L'exemple sonore est en la mineur.";
+    document.getElementById("key-help").textContent = text;
+  }
+
+  function paintDemandPreview() {
+    var box = document.getElementById("demands-preview");
+    var info = ENGINE.interpretDemands(state.demands || "");
+    var bits = [];
+    if (info.cues.length) bits.push("Paroles : " + info.cues.join(" "));
+    if (info.styleTags.length) bits.push("Style : " + info.styleTags.join(", "));
+    if (info.patches.bpm) bits.push("Tempo demandé : " + info.patches.bpm + " BPM");
+    if (info.patches.vocal === "instrumental") bits.push("Voix retirée");
+    else if (info.patches.vocal === "whisper") bits.push("Voix chuchotée");
+    else if (info.patches.vocal === "mc") bits.push("Voix MC");
+    info.hints.forEach(function (hint) { bits.push(hint); });
+    box.textContent = bits.join(" · ");
+  }
+
+  function readLive() {
+    var demands = document.getElementById("demands");
+    if (demands) state.demands = demands.value;
+    var theme = document.getElementById("theme");
+    if (theme) state.theme = theme.value;
+  }
+
+  function noteFreq(keyName) {
+    var note = String(keyName || "A minor").replace(" minor", "");
+    var semis = Object.prototype.hasOwnProperty.call(KEY_ROOT, note) ? KEY_ROOT[note] : 0;
+    return 220 * Math.pow(2, semis / 12);
+  }
+
+  function playKeyDemo() {
+    var AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) {
+      toast("Audio indisponible");
+      return;
+    }
+    if (!demoCtx) demoCtx = new AudioCtx();
+    if (demoCtx.state === "suspended") demoCtx.resume();
+    var now = demoCtx.currentTime;
+    demoGains.forEach(function (gain) {
+      try {
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setTargetAtTime(0.0001, now, 0.03);
+      } catch (err) { /* ancienne note déjà finie */ }
+    });
+    demoGains = [];
+    var keyName = state.key && state.key !== "auto" ? state.key : "A minor";
+    var rootFreq = noteFreq(keyName);
+    var freqs = [
+      rootFreq,
+      rootFreq * Math.pow(2, 3 / 12),
+      rootFreq * Math.pow(2, 7 / 12),
+      rootFreq * 2
+    ];
+    var filter = demoCtx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 1200;
+    var master = demoCtx.createGain();
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.18, now + 0.03);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + 2.15);
+    filter.connect(master);
+    master.connect(demoCtx.destination);
+    demoGains.push(master);
+    freqs.forEach(function (freq) {
+      var osc = demoCtx.createOscillator();
+      osc.type = "sawtooth";
+      osc.frequency.value = freq;
+      osc.connect(filter);
+      osc.start(now);
+      osc.stop(now + 2.25);
+    });
+    if (!state.key || state.key === "auto") toast("Exemple en la mineur");
+  }
+
+  function paintAudioReport(text, isError) {
+    var box = document.getElementById("audio-report");
+    box.hidden = !text;
+    box.textContent = text || "";
+    box.classList.toggle("warning", !!isError);
+    document.getElementById("btn-apply-audio").hidden = !audioReading;
+  }
+
+  function describeReading(reading) {
+    var bpmNote = !reading.bpm ? "tempo non trouvé" : (reading.tempoClear ? reading.bpm + " BPM" : reading.bpm + " BPM, à vérifier");
+    var keyNote = reading.confident
+      ? reading.key + (reading.folded ? " (relatif mineur)" : "")
+      : "tonalité incertaine, Auto reste en place";
+    var line = "Mesuré sur place : " + bpmNote + " · énergie " + reading.energy + " · nuit " + reading.dark + " · " + keyNote + ".";
+    if (reading.bpm < 130 || reading.bpm > 205) {
+      line += " Le curseur va de 130 à 205 : à l'application, le tempo sera calé au plus près.";
+    }
+    return line;
+  }
+
+  function applyReading() {
+    if (!audioReading) return;
+    var measured = Math.round(audioReading.bpm);
+    var bpm = state.bpm;
+    if (measured) {
+      bpm = Math.max(130, Math.min(205, measured));
+      state.bpm = bpm;
+      state.bpmAuto = false;
+    }
+    state.energy = audioReading.energy;
+    state.dark = audioReading.dark;
+    if (audioReading.confident && audioReading.key) state.key = audioReading.key;
+    state.presetId = "";
+    paint();
+    var note = "Mesures appliquées";
+    if (measured && measured !== bpm) note = "Tempo " + measured + " calé à " + bpm;
+    if (!audioReading.confident) note += " · tonalité laissée telle quelle";
+    toast(note);
+    commit(true);
   }
 
   function paint() {
@@ -454,9 +606,11 @@
   }
 
   function generate() {
+    readLive();
     var results = ENGINE.generateTrio(state);
     renderResults(results, false);
     renderDiagnosis();
+    paintDemandPreview();
     saveStore();
   }
 
@@ -526,8 +680,33 @@
     });
     document.getElementById("key").addEventListener("change", function (event) {
       state.key = event.target.value;
+      paintKeyHelp();
       commit(true);
     });
+    document.getElementById("btn-key-demo").addEventListener("click", playKeyDemo);
+    document.getElementById("demands").addEventListener("input", function (event) {
+      state.demands = event.target.value;
+      paintDemandPreview();
+    });
+    document.getElementById("demands").addEventListener("change", function (event) {
+      state.demands = event.target.value;
+      commit(true);
+    });
+    document.getElementById("audio-file").addEventListener("change", function (event) {
+      var file = event.target.files && event.target.files[0];
+      audioReading = null;
+      paintAudioReport("", false);
+      if (!file) return;
+      paintAudioReport("Lecture du fichier, sur cette machine…", false);
+      EAR.analyzeFile(file).then(function (reading) {
+        audioReading = reading;
+        paintAudioReport(describeReading(reading), false);
+      }).catch(function (err) {
+        audioReading = null;
+        paintAudioReport(err && err.message ? err.message : "Lecture impossible.", true);
+      });
+    });
+    document.getElementById("btn-apply-audio").addEventListener("click", applyReading);
     document.getElementById("length").addEventListener("change", function (event) {
       state.length = event.target.value;
       commit(true);
