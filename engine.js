@@ -464,7 +464,9 @@
       length: state.length || "standard",
       lexicon: state.lexicon || "scene",
       seed: state.seed || 1,
-      demands: state.demands || ""
+      demands: state.demands || "",
+      intro: state.intro || "vary",
+      phrase: state.phrase || "sec"
     };
   }
 
@@ -553,15 +555,78 @@
     return "relentless and raw";
   }
 
-  function vocalTag(vocal, gender) {
+  var INTROS = [
+    {
+      id: "didge",
+      style: "didgeridoo drone ceremonial intro",
+      lyric: "[Intro: didgeridoo drone only, tribal hand percussion building slowly, no kick]",
+      avoid: "rolling bass intro"
+    },
+    {
+      id: "acid",
+      style: "filtered acid line solo intro",
+      lyric: "[Intro: filtered TB-303 acid line alone, dark atmosphere, no drums]",
+      avoid: "rolling bass intro"
+    },
+    {
+      id: "hats",
+      style: "ceremonial rattling hats intro",
+      lyric: "[Intro: ceremonial didgeridoo and rattling hats only, rising tension, no kick until the drop]",
+      avoid: "rolling bass intro"
+    },
+    {
+      id: "drone",
+      style: "low ritual drone sparse percussion",
+      lyric: "[Intro: low ritual drone, sparse tribal percussion, sudden hard entry]",
+      avoid: "rolling bass intro"
+    },
+    {
+      id: "perc",
+      style: "ceremonial percussion only intro",
+      lyric: "[Intro: ceremonial percussion only, no bass]",
+      avoid: "synth pad intro"
+    },
+    {
+      id: "sudden",
+      style: "sudden hard ritual entry",
+      lyric: "[Intro: short silence then sudden hard entry, no long filter rise]",
+      avoid: "long filter rise"
+    }
+  ];
+
+  function pickIntro(state, variant) {
+    var mode = state.intro || "vary";
+    if (mode === "off") return null;
+    if (mode !== "vary") {
+      for (var i = 0; i < INTROS.length; i++) {
+        if (INTROS[i].id === mode) return INTROS[i];
+      }
+    }
+    var shift = variant === "fusion" ? 1 : variant === "nuit" ? 2 : 0;
+    return INTROS[(Math.abs(state.seed || 1) + shift) % INTROS.length];
+  }
+
+  function vocalTag(vocal, gender, phrase) {
     var female = gender !== "homme";
+    var dry = phrase === "sec" || phrase === "crie";
+    var shout = phrase === "crie";
     switch (vocal) {
-      case "chops": return "rhythmic vocal chops";
-      case "chant": return "ritual group chant";
-      case "mc": return female ? "shouted female MC" : "shouted male MC";
-      case "whisper": return female ? "close whispered female vocal" : "close whispered male vocal";
-      case "trance": return female ? "anthemic female lead vocal" : "anthemic male lead vocal";
-      default: return "instrumental";
+      case "chops":
+        return dry ? "dry rhythmic vocal chops" : "rhythmic vocal chops";
+      case "chant":
+        return shout ? "raw speech-like group shout" : dry ? "dry ritual group shout" : "ritual group chant";
+      case "mc":
+        if (shout) return female ? "aggressive speech-like female MC" : "aggressive speech-like male MC";
+        if (dry) return female ? "dry shouted female MC straight tone" : "dry shouted male MC straight tone";
+        return female ? "shouted female MC" : "shouted male MC";
+      case "whisper":
+        if (dry) return female ? "dry whispered female vocal straight tone" : "dry whispered male vocal straight tone";
+        return female ? "close whispered female vocal" : "close whispered male vocal";
+      case "trance":
+        if (dry) return female ? "straight-tone female lead vocal" : "straight-tone male lead vocal";
+        return female ? "anthemic female lead vocal" : "anthemic male lead vocal";
+      default:
+        return "instrumental";
     }
   }
 
@@ -663,18 +728,35 @@
     return { bpm: bpm, forced: false, range: range };
   }
 
-  function excludesFor(lane, vocal) {
+  function excludesFor(lane, vocal, phrase, intro) {
+    var base;
     if (vocal === "instrumental") {
-      if (lane === "trance" || lane === "prog") return ["vocals", "singing", "rap", "distorted gabber kick"];
-      if (lane === "hardtechno") return ["vocals", "singing", "acoustic guitar", "trance supersaw"];
-      if (lane === "hardtek" || lane === "frenchcore" || lane === "industek") return ["vocals", "singing", "acoustic guitar", "trap hi-hats"];
-      return ["vocals", "singing", "trap hi-hats", "dubstep growl"];
+      if (lane === "trance" || lane === "prog") base = ["vocals", "singing", "rap", "distorted gabber kick"];
+      else if (lane === "hardtechno") base = ["vocals", "singing", "acoustic guitar", "trance supersaw"];
+      else if (lane === "hardtek" || lane === "frenchcore" || lane === "industek") base = ["vocals", "singing", "acoustic guitar", "trap hi-hats"];
+      else base = ["vocals", "singing", "trap hi-hats", "dubstep growl"];
+    } else if (vocal === "mc") base = ["melodic singing", "choir", "acoustic guitar", "lo-fi"];
+    else if (vocal === "chant") base = ["rap", "speech", "acoustic guitar", "trap hi-hats"];
+    else if (vocal === "whisper") base = ["shouting", "rap", "distorted gabber kick", "trap hi-hats"];
+    else if (vocal === "chops") base = ["rap", "spoken word", "acoustic guitar", "trap hi-hats"];
+    else base = ["rap", "screaming", "distorted gabber kick", "lo-fi"];
+
+    var dry = phrase === "sec" || phrase === "crie";
+    if (dry && vocal === "trance") {
+      base = ["vibrato", "emotional delivery", "humming", "rap"];
+    } else if (dry && vocal === "whisper") {
+      base = ["vibrato", "melodic singing", "shouting", "emotional delivery"];
+    } else if (dry && vocal === "instrumental") {
+      base = base.slice(0, 3).concat(["vibrato"]);
+    } else if (dry) {
+      base = ["vibrato", "melodic singing", "emotional delivery", "sustained notes", "humming"];
     }
-    if (vocal === "mc") return ["melodic singing", "choir", "acoustic guitar", "lo-fi"];
-    if (vocal === "chant") return ["rap", "speech", "acoustic guitar", "trap hi-hats"];
-    if (vocal === "whisper") return ["shouting", "rap", "distorted gabber kick", "trap hi-hats"];
-    if (vocal === "chops") return ["rap", "spoken word", "acoustic guitar", "trap hi-hats"];
-    return ["rap", "screaming", "distorted gabber kick", "lo-fi"];
+    if (intro && intro.avoid) {
+      base = [intro.avoid].concat(base.filter(function (item) {
+        return item.toLowerCase() !== intro.avoid.toLowerCase();
+      }));
+    }
+    return unique(base).slice(0, 5);
   }
 
   function safeTheme(raw) {
@@ -780,15 +862,39 @@
     return sungLyrics(lang, theme, extended, rng);
   }
 
+  function applyIntroLyric(lyrics, intro) {
+    if (!intro || !intro.lyric) return lyrics;
+    return lyrics.replace("[Intro]", intro.lyric);
+  }
+
+  function applyPhraseLyric(lyrics, vocal, phrase) {
+    if (phrase !== "sec" && phrase !== "crie") return lyrics;
+    var text = lyrics;
+    if (vocal === "mc") {
+      var spoken = phrase === "crie"
+        ? "[Shouted: dry aggressive, no vibrato]"
+        : "[Spoken: dry aggressive MC, no vibrato]";
+      text = text.replace(/\[Spoken\]/g, spoken);
+    } else if (vocal === "whisper") {
+      text = text.replace(/\[Whispered\]/g, "[Whispered: dry straight tone, no vibrato]");
+    } else if (vocal === "chant") {
+      text = text.replace(/\[Choir\]/g, "[Shouted: dry group, straight tone]");
+      text = text.replace(/\[Harmony\]/g, "[Shouted: dry group, straight tone]");
+    } else if (vocal === "trance") {
+      text = text.replace(/\[Belted\]/g, "[Belted: straight tone, no vibrato]");
+    }
+    return text;
+  }
+
   function weaveCues(lyrics, cues) {
     var text = lyrics;
     var anchors = [
-      { tag: "[Drop]", stem: "[drop" },
-      { tag: "[Build]", stem: "[build" },
-      { tag: "[Bridge]", stem: "[bridge", alt: "[longer bridge" },
-      { tag: "[Chorus]", stem: "[chorus" },
-      { tag: "[Intro]", stem: "[intro" },
-      { tag: "[Outro]", stem: "[outro" }
+      { name: "Drop" },
+      { name: "Build" },
+      { name: "Bridge", alt: "Longer bridge" },
+      { name: "Chorus" },
+      { name: "Intro" },
+      { name: "Outro" }
     ];
     (cues || []).forEach(function (cue) {
       if (!cue || text.indexOf(cue) !== -1) return;
@@ -796,11 +902,14 @@
       var placed = false;
       for (var i = 0; i < anchors.length; i++) {
         var anchor = anchors[i];
-        var starts = low.indexOf(anchor.stem) === 0;
-        var related = !starts && anchor.alt && low.indexOf(anchor.alt) === 0;
+        var starts = low.indexOf("[" + anchor.name.toLowerCase()) === 0;
+        var related = !starts && anchor.alt && low.indexOf("[" + anchor.alt.toLowerCase()) === 0;
         if (!starts && !related) continue;
-        if (text.indexOf(anchor.tag) === -1) continue;
-        text = starts ? text.replace(anchor.tag, cue) : text.replace(anchor.tag, anchor.tag + "\n" + cue);
+        var re = new RegExp("\\[" + anchor.name + "(?::[^\\]]*)?\\]", "i");
+        var found = text.match(re);
+        if (!found) continue;
+        var clockOnDetailed = starts && /^\[intro at /i.test(cue) && /^\[intro:/i.test(found[0]);
+        text = (clockOnDetailed || related) ? text.replace(re, found[0] + "\n" + cue) : text.replace(re, cue);
         placed = true;
         break;
       }
@@ -818,8 +927,10 @@
     return bank[Math.floor(rng() * bank.length)];
   }
 
-  function assemble(genres, mood, vocal, instruments, extras, bpm) {
-    var head = genres.slice(0, 2).concat([mood, vocal]);
+  function assemble(genres, mood, vocal, instruments, extras, bpm, introTag) {
+    var head = [];
+    if (introTag) head.push(introTag);
+    head = head.concat(genres.slice(0, 2), [mood, vocal]);
     var body = [];
     (extras || []).concat(instruments).forEach(function (tag) {
       if (body.length >= 8) return;
@@ -833,12 +944,14 @@
     return tags;
   }
 
-  function tagRoles(tags, genreCount) {
+  function tagRoles(tags, genreCount, introCount) {
+    var lead = introCount || 0;
     return tags.map(function (text, index) {
       var role = "inst";
-      if (index < genreCount) role = "genre";
-      else if (index === genreCount) role = "mood";
-      else if (index === genreCount + 1) role = "vocal";
+      if (index < lead) role = "intro";
+      else if (index < lead + genreCount) role = "genre";
+      else if (index === lead + genreCount) role = "mood";
+      else if (index === lead + genreCount + 1) role = "vocal";
       else if (index === tags.length - 1) role = "bpm";
       return { text: text, role: role };
     });
@@ -934,6 +1047,10 @@
     return "";
   }
 
+  function hasSection(lyrics, name) {
+    return new RegExp("\\[" + name + "(?:\\]|:|\\s)", "i").test(lyrics);
+  }
+
   function selfCheck(result) {
     var problems = [];
     var tags = result.tags || [];
@@ -951,7 +1068,8 @@
     if (/in the style of/i.test(blob)) problems.push("Formule « in the style of » interdite.");
     if ((result.style || "").length > 1000) problems.push("Style au-dessus de 1000 caractères.");
     var vocal = result.vocalTag;
-    if (tags.indexOf(vocal) !== result.genreCount + 1) problems.push("La voix n'est pas à sa place dans la formule.");
+    var lead = result.introCount || 0;
+    if (tags.indexOf(vocal) !== result.genreCount + lead + 1) problems.push("La voix n'est pas à sa place dans la formule.");
     if (result.vocalMode === "instrumental") {
       if (vocal !== "instrumental") problems.push("Mode instrumental incohérent.");
       if (/\b(singing|choir|chant|mc)\b/i.test(result.style)) problems.push("Le style instrumental contient une voix.");
@@ -962,13 +1080,13 @@
       problems.push("BPM auto hors zone " + result.range[0] + "–" + result.range[1] + ".");
     }
     var lyrics = result.lyrics || "";
-    if (!/\[Intro\]/.test(lyrics) || !/\[Outro\]/.test(lyrics)) problems.push("Les paroles doivent avoir [Intro] et [Outro].");
+    if (!hasSection(lyrics, "Intro") || !hasSection(lyrics, "Outro")) problems.push("Les paroles doivent avoir [Intro] et [Outro].");
     if (/\[Breakdown\]/.test(lyrics)) problems.push("Utiliser [Bridge], pas [Breakdown].");
     if (result.vocalMode === "trance") {
-      ["[Verse]", "[Pre-Chorus]", "[Chorus]", "[Bridge]", "[Belted]"].forEach(function (tag) {
-        if (lyrics.indexOf(tag) === -1) problems.push("Tag manquant : " + tag);
+      ["Verse", "Pre-Chorus", "Chorus", "Bridge", "Belted"].forEach(function (name) {
+        if (!hasSection(lyrics, name)) problems.push("Tag manquant : [" + name + "]");
       });
-    } else if (lyrics.indexOf("[Build]") === -1 || lyrics.indexOf("[Drop]") === -1) {
+    } else if (!hasSection(lyrics, "Build") || !hasSection(lyrics, "Drop")) {
       problems.push("Il manque [Build] ou [Drop].");
     }
     if (/[\(\)]/.test(lyrics)) problems.push("Parenthèses dans les paroles : Suno peut les chanter.");
@@ -993,10 +1111,11 @@
       tuned.bpmAuto = false;
     }
     var vocalMode = tuned.vocal || "instrumental";
-    var vocal = vocalTag(vocalMode, tuned.voiceGender);
+    var intro = pickIntro(tuned, variant);
+    var vocal = vocalTag(vocalMode, tuned.voiceGender, tuned.phrase);
     var instruments = buildInstruments(plan.lane, tuned, rng);
     var bpmInfo = resolveBpm(tuned, plan.lane, variant, rng);
-    var tags = assemble(genres, mood, vocal, instruments, demand.styleTags, bpmInfo.bpm);
+    var tags = assemble(genres, mood, vocal, instruments, demand.styleTags, bpmInfo.bpm, intro && intro.style);
     var warnings = demand.blocked.map(function (line) {
       return "Demande non reprise : " + line;
     });
@@ -1014,11 +1133,15 @@
       bpmAuto: tuned.bpmAuto,
       title: makeTitle(plan.lane, tuned.theme, rng),
       tags: tags,
-      roles: tagRoles(tags, genres.length),
+      roles: tagRoles(tags, genres.length, intro ? 1 : 0),
       genreCount: genres.length,
+      introCount: intro ? 1 : 0,
       style: tags.join(", "),
-      exclude: excludesFor(plan.lane, vocalMode).join(", "),
-      lyrics: weaveCues(makeLyrics(tuned, rng), demand.cues),
+      exclude: excludesFor(plan.lane, vocalMode, tuned.phrase, intro).join(", "),
+      lyrics: weaveCues(
+        applyPhraseLyric(applyIntroLyric(makeLyrics(tuned, rng), intro), vocalMode, tuned.phrase),
+        demand.cues
+      ),
       vocalTag: vocal,
       vocalMode: vocalMode,
       warnings: warnings,

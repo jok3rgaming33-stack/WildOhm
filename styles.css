@@ -449,6 +449,7 @@ input[type="file"] {
   border: 1px solid var(--paper-ink);
 }
 
+.chip-intro { background: var(--trance); color: var(--acid-ink); border-color: var(--trance); }
 .chip-genre { background: var(--acid); border-color: var(--acid); }
 .chip-mood { background: transparent; }
 .chip-vocal { background: var(--paper-ink); color: var(--paper); }

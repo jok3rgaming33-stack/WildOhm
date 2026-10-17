@@ -54,7 +54,9 @@
       length: "standard",
       lexicon: "scene",
       seed: 1,
-      demands: ""
+      demands: "",
+      intro: "vary",
+      phrase: "sec"
     };
   }
 
@@ -67,6 +69,8 @@
     var bpm = state.bpm;
     var theme = state.theme;
     var demands = state.demands;
+    var intro = state.intro;
+    var phrase = state.phrase;
     state = defaultState();
     state.presetId = preset.id;
     state.seed = keepSeed ? seed : seed;
@@ -77,6 +81,8 @@
     state.bpm = bpm;
     state.theme = theme;
     state.demands = demands || "";
+    state.intro = intro || "vary";
+    state.phrase = phrase || "sec";
     var g = preset.apply.genres || {};
     Object.keys(state.genres).forEach(function (id) {
       state.genres[id] = g[id] || 0;
@@ -214,6 +220,8 @@
     var demands = document.getElementById("demands");
     if (demands && demands.value !== (state.demands || "")) demands.value = state.demands || "";
     document.getElementById("length").value = state.length;
+    document.getElementById("intro").value = state.intro || "vary";
+    document.getElementById("phrase").value = state.phrase || "sec";
     document.getElementById("seed").value = String(state.seed);
     document.getElementById("bpm-auto").checked = !!state.bpmAuto;
     document.getElementById("bpm").disabled = !!state.bpmAuto;
@@ -709,6 +717,14 @@
     document.getElementById("btn-apply-audio").addEventListener("click", applyReading);
     document.getElementById("length").addEventListener("change", function (event) {
       state.length = event.target.value;
+      commit(true);
+    });
+    document.getElementById("intro").addEventListener("change", function (event) {
+      state.intro = event.target.value;
+      commit(true);
+    });
+    document.getElementById("phrase").addEventListener("change", function (event) {
+      state.phrase = event.target.value;
       commit(true);
     });
     document.getElementById("seed").addEventListener("change", function (event) {

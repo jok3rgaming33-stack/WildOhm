@@ -26,6 +26,7 @@
     </header>
 
     <p class="formula" aria-label="Ordre du champ Style">
+      <span>Intro</span>
       <span>Genre</span>
       <span>Ambiance</span>
       <span>Voix</span>
@@ -128,6 +129,29 @@
             <option value="extended">Longue</option>
           </select>
         </label>
+        <label class="field">
+          <span>Intro</span>
+          <select id="intro">
+            <option value="vary">Varier à chaque carte</option>
+            <option value="didge">Didgeridoo seul</option>
+            <option value="acid">303 filtré seul</option>
+            <option value="hats">Hats rituels</option>
+            <option value="drone">Drone grave</option>
+            <option value="perc">Percussions seules</option>
+            <option value="sudden">Entrée sèche</option>
+            <option value="off">Classique, intro vague</option>
+          </select>
+        </label>
+        <p class="hint">Écrite en tête du style, en positif, et détaillée à la place du simple [Intro]. Les trois cartes n'ont pas la même. Sur Suno, laisse Variety bas. Si le morceau est bon mais l'intro non, remplace seulement cette section dans l'éditeur.</p>
+        <label class="field">
+          <span>Phrasé</span>
+          <select id="phrase">
+            <option value="sec">Sec, sans vibrato</option>
+            <option value="crie">Crié, parlé</option>
+            <option value="libre">Libre</option>
+          </select>
+        </label>
+        <p class="hint">Sec dit une voix droite dans le style, et met vibrato, chant mélodique et notes tenues dans Exclude. « MC crié » tout seul ne suffit pas : Suno ajoute souvent du vibrato.</p>
 
         <h2>Demandes</h2>
         <label class="field">
