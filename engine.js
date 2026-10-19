@@ -466,7 +466,8 @@
       seed: state.seed || 1,
       demands: state.demands || "",
       intro: state.intro || "vary",
-      phrase: state.phrase || "sec"
+      phrase: state.phrase || "sec",
+      ownLyrics: state.ownLyrics || ""
     };
   }
 
@@ -1082,17 +1083,301 @@
     var lyrics = result.lyrics || "";
     if (!hasSection(lyrics, "Intro") || !hasSection(lyrics, "Outro")) problems.push("Les paroles doivent avoir [Intro] et [Outro].");
     if (/\[Breakdown\]/.test(lyrics)) problems.push("Utiliser [Bridge], pas [Breakdown].");
-    if (result.vocalMode === "trance") {
+    if (!result.customLyrics && result.vocalMode === "trance") {
       ["Verse", "Pre-Chorus", "Chorus", "Bridge", "Belted"].forEach(function (name) {
         if (!hasSection(lyrics, name)) problems.push("Tag manquant : [" + name + "]");
       });
-    } else if (!hasSection(lyrics, "Build") || !hasSection(lyrics, "Drop")) {
+    } else if (!result.customLyrics && (!hasSection(lyrics, "Build") || !hasSection(lyrics, "Drop"))) {
       problems.push("Il manque [Build] ou [Drop].");
     }
     if (/[\(\)]/.test(lyrics)) problems.push("Parenthèses dans les paroles : Suno peut les chanter.");
     var excludeBits = (result.exclude || "").split(",").map(function (x) { return x.trim(); }).filter(Boolean);
     if (excludeBits.length < 2 || excludeBits.length > 5) problems.push("Exclude styles doit contenir 2 à 5 termes.");
     return problems;
+  }
+
+  var CUE_FILLER = { a: 1, de: 1, du: 1, des: 1, la: 1, le: 1, les: 1, en: 1, et: 1, au: 1, aux: 1, un: 1, une: 1, puis: 1, the: 1, and: 1, with: 1 };
+  var CUE_LEX = {
+    drop: { section: "Drop" },
+    build: { section: "Build" },
+    montee: { section: "Build" },
+    silence: { section: "Break" },
+    pause: { section: "Break" },
+    break: { section: "Break" },
+    instrumental: { section: "Instrumental" },
+    intro: { section: "Intro" },
+    outro: { section: "Outro" },
+    fin: { section: "Outro" },
+    refrain: { section: "Chorus" },
+    chorus: { section: "Chorus" },
+    couplet: { section: "Verse" },
+    verse: { section: "Verse" },
+    pont: { section: "Bridge" },
+    bridge: { section: "Bridge" },
+    femme: { gender: "female" },
+    female: { gender: "female" },
+    homme: { gender: "male" },
+    male: { gender: "male" },
+    lesdeux: { gender: "both" },
+    duo: { gender: "both" },
+    both: { gender: "both" },
+    ensemble: { gender: "both" },
+    chuchote: { delivery: "whisper" },
+    chuchotement: { delivery: "whisper" },
+    chuchoter: { delivery: "whisper" },
+    whisper: { delivery: "whisper" },
+    whispered: { delivery: "whisper" },
+    hurle: { delivery: "shout" },
+    hurlement: { delivery: "shout" },
+    cri: { delivery: "shout" },
+    crie: { delivery: "shout" },
+    scream: { delivery: "shout" },
+    shout: { delivery: "shout" },
+    gueule: { delivery: "shout" },
+    parle: { delivery: "spoken" },
+    spoken: { delivery: "spoken" },
+    chante: { delivery: "sung" },
+    sing: { delivery: "sung" },
+    belted: { delivery: "sung" },
+    choeur: { delivery: "choir" },
+    choir: { delivery: "choir" },
+    harmonie: { delivery: "harmony" },
+    harmony: { delivery: "harmony" },
+    souffle: { tone: "breathy" },
+    breathy: { tone: "breathy" },
+    grave: { tone: "low" },
+    aigu: { tone: "high" },
+    radio: { tone: "radio" },
+    megaphone: { tone: "megaphone" },
+    vocodeur: { tone: "vocoder" },
+    vocoder: { tone: "vocoder" },
+    robot: { tone: "vocoder" },
+    sec: { tone: "dry" },
+    dry: { tone: "dry" }
+  };
+
+  function foldCue(text) {
+    return String(text || "").toLowerCase()
+      .replace(/[àâä]/g, "a")
+      .replace(/[éèêë]/g, "e")
+      .replace(/[ïî]/g, "i")
+      .replace(/[ôö]/g, "o")
+      .replace(/[ùûü]/g, "u")
+      .replace(/ç/g, "c");
+  }
+
+  function readCue(line) {
+    var clock = clockOf(line);
+    var norm = foldCue(line)
+      .replace(/[\[\]\(\)]/g, " ")
+      .replace(/homme et femme|femme et homme/g, " lesdeux ")
+      .replace(/les deux/g, " lesdeux ")
+      .replace(/sans vibrato/g, " sec ");
+    norm = norm.replace(/[^a-z0-9:h\s]/g, " ").replace(/\s+/g, " ").trim();
+    if (!norm && !clock) return null;
+    var tokens = norm ? norm.split(" ") : [];
+    var known = 0;
+    var unknown = 0;
+    var cue = { clock: clock, gender: "", delivery: "", tones: [], section: "" };
+    tokens.forEach(function (token) {
+      if (CUE_FILLER[token] || /^\d{1,2}[:h]\d{2}$/.test(token)) return;
+      var hit = CUE_LEX[token];
+      if (!hit) {
+        unknown += 1;
+        return;
+      }
+      known += 1;
+      if (hit.gender) cue.gender = hit.gender;
+      if (hit.delivery) cue.delivery = hit.delivery;
+      if (hit.tone && cue.tones.indexOf(hit.tone) === -1) cue.tones.push(hit.tone);
+      if (hit.section) cue.section = hit.section;
+    });
+    if (!known || unknown) return null;
+    return cue;
+  }
+
+  function lyricCue(voice) {
+    var way = {
+      whisper: "Whispered",
+      shout: "Shouted",
+      spoken: "Spoken",
+      sung: "Belted",
+      choir: "Choir",
+      harmony: "Harmony"
+    }[voice.delivery] || "";
+    var who = voice.gender === "female" ? "female vocal" : voice.gender === "male" ? "male vocal" : voice.gender === "both" ? "male and female vocals" : "";
+    var toneLabel = {
+      dry: "dry straight tone, no vibrato",
+      breathy: "breathy",
+      low: "low voice",
+      high: "high voice",
+      radio: "radio filter",
+      megaphone: "megaphone",
+      vocoder: "vocoder"
+    };
+    var extra = [];
+    (voice.tones || []).forEach(function (tone) {
+      if (toneLabel[tone]) extra.push(toneLabel[tone]);
+    });
+    var head = "";
+    if (way && who) head = way + " " + who;
+    else if (way) head = way;
+    else if (who) head = who.charAt(0).toUpperCase() + who.slice(1);
+    if (!head && !extra.length) return "";
+    if (!head) head = extra.shift();
+    head = head.charAt(0).toUpperCase() + head.slice(1);
+    return "[" + [head].concat(extra).join(", ") + "]";
+  }
+
+  function sectionTag(kind, clock) {
+    var name = kind || "Break";
+    if (clock) return "[" + name + " at " + clock + "]";
+    return "[" + name + "]";
+  }
+
+  function cleanLyric(text) {
+    return String(text || "").replace(/[\[\]\(\)\{\}<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, 140);
+  }
+
+  function styleFromVoices(seen, phrase) {
+    if (!seen.words) return { vocalTag: "", vocalMode: "" };
+    var dry = phrase === "sec" || phrase === "crie";
+    var who = seen.male && seen.female ? "male and female vocals" : seen.female ? "female vocal" : seen.male ? "male vocal" : "vocal";
+    var way = "";
+    if (seen.ways.length === 1) {
+      way = { whisper: "whispered", shout: "shouted", spoken: "spoken", sung: "sung", choir: "group", harmony: "layered" }[seen.ways[0]] || "";
+    }
+    var tag = ((dry ? "dry " : "") + (way ? way + " " : "") + who + (dry ? " straight tone" : "")).replace(/\s+/g, " ").trim();
+    var mode = "mc";
+    if (seen.ways.length === 1 && seen.ways[0] === "whisper") mode = "whisper";
+    else if (seen.ways.length === 1 && seen.ways[0] === "sung") mode = "trance";
+    else if (seen.ways.length === 1 && seen.ways[0] === "choir") mode = "chant";
+    return { vocalTag: tag, vocalMode: mode };
+  }
+
+  function fitOwnLyrics(raw, state) {
+    var source = String(raw || "").replace(/\r/g, "");
+    var empty = { text: "", vocalTag: "", vocalMode: "", hints: [], blocked: [], preview: "" };
+    if (!source.trim()) return empty;
+    var phrase = (state && state.phrase) || "sec";
+    var voice = { gender: "", delivery: "", tones: [] };
+    if (state && state.vocal && state.vocal !== "instrumental" && state.vocal !== "chops") {
+      voice.gender = state.voiceGender === "homme" ? "male" : "female";
+    }
+    if (state && state.vocal === "whisper") voice.delivery = "whisper";
+    else if (state && state.vocal === "mc") voice.delivery = phrase === "crie" ? "shout" : "spoken";
+    else if (state && state.vocal === "trance") voice.delivery = "sung";
+    else if (state && state.vocal === "chant") voice.delivery = "choir";
+    if (phrase === "sec" || phrase === "crie") voice.tones = ["dry"];
+    var out = [];
+    var lastCue = "";
+    var seen = { words: false, male: false, female: false, ways: [] };
+    var hints = [];
+    var blocked = [];
+    var sawSilence = false;
+    var sawClock = false;
+
+    function noteVoice(next) {
+      if (next.gender === "both" || next.gender === "female") seen.female = true;
+      if (next.gender === "both" || next.gender === "male") seen.male = true;
+      if (next.delivery && seen.ways.indexOf(next.delivery) === -1) seen.ways.push(next.delivery);
+    }
+
+    function emitVoice() {
+      noteVoice(voice);
+      var cue = lyricCue(voice);
+      if (!cue || cue === lastCue) return;
+      out.push(cue);
+      lastCue = cue;
+    }
+
+    function pushSection(tag) {
+      if (out.length && out[out.length - 1] !== "") out.push("");
+      out.push(tag);
+      lastCue = "";
+    }
+
+    source.split("\n").slice(0, 80).forEach(function (original) {
+      var line = original.trim();
+      if (!line) return;
+      if (containsBanned(line) || DEMAND_BLOCK.test(line)) {
+        blocked.push(line);
+        return;
+      }
+      var whole = readCue(line);
+      if (whole) {
+        if (whole.gender) voice.gender = whole.gender;
+        if (whole.delivery) {
+          voice.delivery = whole.delivery;
+          if (!whole.tones.length) voice.tones = phrase === "sec" || phrase === "crie" ? ["dry"] : [];
+        } else if (whole.tones.length) voice.delivery = "";
+        if (whole.tones.length) voice.tones = whole.tones.slice();
+        if (whole.section) {
+          if (whole.section === "Break") sawSilence = true;
+          if (whole.clock) sawClock = true;
+          pushSection(sectionTag(whole.section, whole.clock));
+        }
+        noteVoice(voice);
+        return;
+      }
+      var notes = [];
+      var spoken = line.replace(/\(([^)]*)\)/g, function (_, inner) {
+        notes.push(inner);
+        return " ";
+      });
+      var local = { gender: voice.gender, delivery: voice.delivery, tones: (voice.tones || []).slice() };
+      var extra = [];
+      notes.forEach(function (note) {
+        var cue = readCue(note);
+        if (!cue) {
+          var kept = cleanLyric(note);
+          if (kept) extra.push(kept);
+          return;
+        }
+        if (cue.gender) local.gender = cue.gender;
+        if (cue.delivery) {
+          local.delivery = cue.delivery;
+          if (!cue.tones.length) local.tones = phrase === "sec" || phrase === "crie" ? ["dry"] : [];
+        } else if (cue.tones.length) local.delivery = "";
+        if (cue.tones.length) local.tones = cue.tones.slice();
+        if (cue.section) pushSection(sectionTag(cue.section, cue.clock));
+      });
+      var text = cleanLyric([spoken].concat(extra).join(" "));
+      if (!text) return;
+      var saved = voice;
+      var scoped = notes.length > 0;
+      voice = local;
+      emitVoice();
+      out.push(text);
+      seen.words = true;
+      voice = saved;
+      if (scoped) lastCue = "";
+    });
+
+    if (!out.length && !blocked.length) return empty;
+    var text = out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    if (!hasSection(text, "Intro")) text = "[Intro]\n" + text;
+    if (!hasSection(text, "Outro")) text = text.replace(/\s*$/, "") + "\n[Outro]";
+    if (sawSilence) hints.push("Silence placé en [Break]. Suno ouvre un trou dans le rythme, pas un blanc parfait.");
+    if (sawClock) hints.push("Suno ne suit pas une horloge. L'heure reste un repère.");
+    if (seen.male && seen.female) hints.push("Homme et femme sont tous les deux écrits dans les paroles.");
+    var styled = styleFromVoices(seen, phrase);
+    if (seen.words && !styled.vocalTag) {
+      styled.vocalTag = phrase === "sec" || phrase === "crie" ? "dry spoken vocal straight tone" : "spoken vocal";
+      styled.vocalMode = "mc";
+      hints.push("Pas de consigne de voix : parlé par défaut. Précise par exemple [femme, chuchoté].");
+    }
+    blocked.forEach(function (line) {
+      hints.push("Ligne retirée : " + line);
+    });
+    return {
+      text: text.trim() + "\n",
+      vocalTag: styled.vocalTag,
+      vocalMode: styled.vocalMode,
+      hints: unique(hints),
+      blocked: blocked,
+      preview: text.trim()
+    };
   }
 
   function generateOne(state, variant, rng) {
@@ -1112,13 +1397,17 @@
     }
     var vocalMode = tuned.vocal || "instrumental";
     var intro = pickIntro(tuned, variant);
-    var vocal = vocalTag(vocalMode, tuned.voiceGender, tuned.phrase);
+    var fitted = fitOwnLyrics(tuned.ownLyrics, tuned);
+    if (fitted.vocalTag) vocalMode = fitted.vocalMode || vocalMode;
+    var vocal = fitted.vocalTag || vocalTag(vocalMode, tuned.voiceGender, tuned.phrase);
     var instruments = buildInstruments(plan.lane, tuned, rng);
     var bpmInfo = resolveBpm(tuned, plan.lane, variant, rng);
     var tags = assemble(genres, mood, vocal, instruments, demand.styleTags, bpmInfo.bpm, intro && intro.style);
     var warnings = demand.blocked.map(function (line) {
       return "Demande non reprise : " + line;
-    });
+    }).concat((fitted.blocked || []).map(function (line) {
+      return "Parole non reprise : " + line;
+    }));
     if (bpmInfo.forced && (bpmInfo.bpm < bpmInfo.range[0] - 6 || bpmInfo.bpm > bpmInfo.range[1] + 6)) {
       warnings.push("BPM " + bpmInfo.bpm + " hors de la zone " + bpmInfo.range[0] + "–" + bpmInfo.range[1] + " pour " + LANE_FR[plan.lane] + ". Suno peut changer de genre.");
     }
@@ -1138,12 +1427,15 @@
       introCount: intro ? 1 : 0,
       style: tags.join(", "),
       exclude: excludesFor(plan.lane, vocalMode, tuned.phrase, intro).join(", "),
-      lyrics: weaveCues(
-        applyPhraseLyric(applyIntroLyric(makeLyrics(tuned, rng), intro), vocalMode, tuned.phrase),
-        demand.cues
-      ),
+      lyrics: fitted.text
+        ? weaveCues(applyIntroLyric(fitted.text, intro), demand.cues)
+        : weaveCues(
+          applyPhraseLyric(applyIntroLyric(makeLyrics(tuned, rng), intro), vocalMode, tuned.phrase),
+          demand.cues
+        ),
       vocalTag: vocal,
       vocalMode: vocalMode,
+      customLyrics: !!fitted.text,
       warnings: warnings,
       problems: []
     };
@@ -1204,6 +1496,7 @@
     diagnose: diagnose,
     selfCheck: selfCheck,
     scoresOf: scoresOf,
-    interpretDemands: interpretDemands
+    interpretDemands: interpretDemands,
+    fitOwnLyrics: fitOwnLyrics
   };
 })(typeof globalThis !== "undefined" ? globalThis : this);

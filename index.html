@@ -153,13 +153,21 @@
         </label>
         <p class="hint">Sec dit une voix droite dans le style, et met vibrato, chant mélodique et notes tenues dans Exclude. « MC crié » tout seul ne suffit pas : Suno ajoute souvent du vibrato.</p>
 
+        <h2>Paroles</h2>
+        <label class="field">
+          <span>Ton texte</span>
+          <textarea id="own-lyrics" rows="9" spellcheck="false" placeholder="[femme, chuchoté]&#10;reste près du sol&#10;&#10;[drop]&#10;&#10;[homme, hurlé]&#10;alerte&#10;&#10;[silence]&#10;&#10;[les deux, parlé]&#10;on reste"></textarea>
+        </label>
+        <p id="lyrics-preview" class="hint"></p>
+        <p class="hint">Une consigne entre crochets, puis les lignes qu'elle concerne. Homme, femme ou les deux. Façon de dire : chuchoté, hurlé, parlé, chanté, choeur, soufflé, grave, aigu, radio, mégaphone, vocodeur, sec. Places : drop, build, silence, couplet, refrain, pont. Vide : l'appli écrit les paroles.</p>
+
         <h2>Demandes</h2>
         <label class="field">
           <span>Une par ligne</span>
           <textarea id="demands" rows="4" spellcheck="false" placeholder="Drop à 01:30&#10;Break plus long&#10;Plus de 303"></textarea>
         </label>
         <p id="demands-preview" class="hint"></p>
-        <p class="hint">Le texte est traduit dans le prompt. Une heure devient un repère entre crochets : Suno ne vise pas la seconde. Copier une mélodie, des paroles ou un nom d'artiste est refusé.</p>
+        <p class="hint">Ici, le son : 303, tempo, un drop à une heure. Les mots à dire vont dans Paroles. Une copie ou un nom d'artiste est refusé.</p>
 
         <h2>Base audio</h2>
         <p class="hint">Le fichier reste dans le navigateur. Rien n'est envoyé. On mesure le tempo, l'énergie, la nuit et la tonalité. La mélodie, les paroles et l'arrangement ne sont pas repris.</p>

@@ -56,7 +56,8 @@
       seed: 1,
       demands: "",
       intro: "vary",
-      phrase: "sec"
+      phrase: "sec",
+      ownLyrics: ""
     };
   }
 
@@ -71,6 +72,7 @@
     var demands = state.demands;
     var intro = state.intro;
     var phrase = state.phrase;
+    var ownLyrics = state.ownLyrics;
     state = defaultState();
     state.presetId = preset.id;
     state.seed = keepSeed ? seed : seed;
@@ -83,6 +85,7 @@
     state.demands = demands || "";
     state.intro = intro || "vary";
     state.phrase = phrase || "sec";
+    state.ownLyrics = ownLyrics || "";
     var g = preset.apply.genres || {};
     Object.keys(state.genres).forEach(function (id) {
       state.genres[id] = g[id] || 0;
@@ -219,6 +222,8 @@
     document.getElementById("key").value = state.key;
     var demands = document.getElementById("demands");
     if (demands && demands.value !== (state.demands || "")) demands.value = state.demands || "";
+    var ownLyrics = document.getElementById("own-lyrics");
+    if (ownLyrics && ownLyrics.value !== (state.ownLyrics || "")) ownLyrics.value = state.ownLyrics || "";
     document.getElementById("length").value = state.length;
     document.getElementById("intro").value = state.intro || "vary";
     document.getElementById("phrase").value = state.phrase || "sec";
@@ -232,6 +237,7 @@
     });
     paintKeyHelp();
     paintDemandPreview();
+    paintLyricsPreview();
   }
 
   function paintKeyHelp() {
@@ -245,7 +251,7 @@
     var box = document.getElementById("demands-preview");
     var info = ENGINE.interpretDemands(state.demands || "");
     var bits = [];
-    if (info.cues.length) bits.push("Paroles : " + info.cues.join(" "));
+    if (info.cues.length) bits.push("Repère : " + info.cues.join(" "));
     if (info.styleTags.length) bits.push("Style : " + info.styleTags.join(", "));
     if (info.patches.bpm) bits.push("Tempo demandé : " + info.patches.bpm + " BPM");
     if (info.patches.vocal === "instrumental") bits.push("Voix retirée");
@@ -255,9 +261,22 @@
     box.textContent = bits.join(" · ");
   }
 
+  function paintLyricsPreview() {
+    var box = document.getElementById("lyrics-preview");
+    var fitted = ENGINE.fitOwnLyrics(state.ownLyrics || "", state);
+    if (!fitted.preview) {
+      box.textContent = "";
+      return;
+    }
+    var head = fitted.hints.length ? fitted.hints.join(" ") + "\n" : "";
+    box.textContent = head + fitted.preview;
+  }
+
   function readLive() {
     var demands = document.getElementById("demands");
     if (demands) state.demands = demands.value;
+    var ownLyrics = document.getElementById("own-lyrics");
+    if (ownLyrics) state.ownLyrics = ownLyrics.value;
     var theme = document.getElementById("theme");
     if (theme) state.theme = theme.value;
   }
@@ -692,6 +711,14 @@
       commit(true);
     });
     document.getElementById("btn-key-demo").addEventListener("click", playKeyDemo);
+    document.getElementById("own-lyrics").addEventListener("input", function (event) {
+      state.ownLyrics = event.target.value;
+      paintLyricsPreview();
+    });
+    document.getElementById("own-lyrics").addEventListener("change", function (event) {
+      state.ownLyrics = event.target.value;
+      commit(true);
+    });
     document.getElementById("demands").addEventListener("input", function (event) {
       state.demands = event.target.value;
       paintDemandPreview();

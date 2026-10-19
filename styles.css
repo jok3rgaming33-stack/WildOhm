@@ -269,6 +269,13 @@ select, input[type="text"], input[type="number"], textarea {
   border-radius: 0;
 }
 
+#lyrics-preview {
+  white-space: pre-wrap;
+  font-family: Consolas, "Courier New", monospace;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .field textarea,
 input[type="file"] {
   text-transform: none;
