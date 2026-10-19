@@ -154,12 +154,61 @@
         <p class="hint">Sec dit une voix droite dans le style, et met vibrato, chant mélodique et notes tenues dans Exclude. « MC crié » tout seul ne suffit pas : Suno ajoute souvent du vibrato.</p>
 
         <h2>Paroles</h2>
+        <div class="tag-menus">
+          <label class="field">
+            <span>Qui</span>
+            <select id="tag-who">
+              <option value="">—</option>
+              <option value="femme">Femme</option>
+              <option value="homme">Homme</option>
+              <option value="les deux">Les deux</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Façon</span>
+            <select id="tag-how">
+              <option value="">—</option>
+              <option value="chuchoté">Chuchoté</option>
+              <option value="hurlé">Hurlé</option>
+              <option value="parlé">Parlé</option>
+              <option value="chanté">Chanté</option>
+              <option value="choeur">Choeur</option>
+              <option value="soufflé">Soufflé</option>
+              <option value="grave">Grave</option>
+              <option value="aigu">Aigu</option>
+              <option value="radio">Radio</option>
+              <option value="mégaphone">Mégaphone</option>
+              <option value="vocodeur">Vocodeur</option>
+              <option value="sec">Sec</option>
+            </select>
+          </label>
+          <button type="button" id="btn-insert-voice" class="btn tiny ghost">Poser la voix</button>
+          <label class="field">
+            <span>Place</span>
+            <select id="tag-place">
+              <option value="">—</option>
+              <option value="drop">Drop</option>
+              <option value="montée">Montée</option>
+              <option value="silence">Silence</option>
+              <option value="couplet">Couplet</option>
+              <option value="refrain">Refrain</option>
+              <option value="pont">Pont</option>
+              <option value="intro">Intro</option>
+              <option value="fin">Fin</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Heure</span>
+            <input id="tag-time" type="text" inputmode="numeric" maxlength="5" placeholder="01:30" autocomplete="off">
+          </label>
+          <button type="button" id="btn-insert-place" class="btn tiny ghost">Poser la place</button>
+        </div>
         <label class="field">
           <span>Ton texte</span>
-          <textarea id="own-lyrics" rows="9" spellcheck="false" placeholder="[femme, chuchoté]&#10;reste près du sol&#10;&#10;[drop]&#10;&#10;[homme, hurlé]&#10;alerte&#10;&#10;[silence]&#10;&#10;[les deux, parlé]&#10;on reste"></textarea>
+          <textarea id="own-lyrics" rows="9" spellcheck="false" placeholder="Les mots à dire, sous la balise."></textarea>
         </label>
         <p id="lyrics-preview" class="hint"></p>
-        <p class="hint">Une consigne entre crochets, puis les lignes qu'elle concerne. Homme, femme ou les deux. Façon de dire : chuchoté, hurlé, parlé, chanté, choeur, soufflé, grave, aigu, radio, mégaphone, vocodeur, sec. Places : drop, build, silence, couplet, refrain, pont. Vide : l'appli écrit les paroles.</p>
+        <p class="hint">La balise se pose au curseur. Écris les mots juste en dessous. Vide : l'appli écrit les paroles.</p>
 
         <h2>Demandes</h2>
         <label class="field">

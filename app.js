@@ -12,6 +12,7 @@
   var audioReading = null;
   var demoCtx = null;
   var demoGains = [];
+  var lyricsCaret = null;
 
   var KEY_HELP = {
     auto: "Laisse Suno choisir. Le plus simple pour commencer.",
@@ -638,7 +639,48 @@
     renderResults(results, false);
     renderDiagnosis();
     paintDemandPreview();
+    paintLyricsPreview();
     saveStore();
+  }
+
+  function rememberLyricsCaret() {
+    var area = document.getElementById("own-lyrics");
+    if (!area) return;
+    lyricsCaret = { start: area.selectionStart, end: area.selectionEnd };
+  }
+
+  function lyricClock(raw) {
+    var match = String(raw || "").match(/(\d{1,2})\s*[:hH]\s*(\d{2})/);
+    if (!String(raw || "").trim()) return "";
+    if (!match) return null;
+    var min = Math.min(14, Number(match[1]));
+    var sec = Math.min(59, Number(match[2]));
+    return (min < 10 ? "0" : "") + min + ":" + (sec < 10 ? "0" : "") + sec;
+  }
+
+  function insertLyricTag(tagLine) {
+    var area = document.getElementById("own-lyrics");
+    var value = area.value;
+    var start = area.selectionStart;
+    var end = area.selectionEnd;
+    if (document.activeElement !== area && lyricsCaret) {
+      start = lyricsCaret.start;
+      end = lyricsCaret.end;
+    }
+    if (start == null || start > value.length) start = value.length;
+    if (end == null || end > value.length || end < start) end = start;
+    var before = value.slice(0, start);
+    var after = value.slice(end);
+    var lead = before.length && before.charAt(before.length - 1) !== "\n" ? "\n" : "";
+    var chunk = lead + tagLine + "\n";
+    area.value = before + chunk + after;
+    var pos = before.length + chunk.length;
+    lyricsCaret = { start: pos, end: pos };
+    state.ownLyrics = area.value;
+    area.focus();
+    area.selectionStart = area.selectionEnd = pos;
+    paintLyricsPreview();
+    commit(true);
   }
 
   function commit(doGenerate) {
@@ -711,9 +753,37 @@
       commit(true);
     });
     document.getElementById("btn-key-demo").addEventListener("click", playKeyDemo);
-    document.getElementById("own-lyrics").addEventListener("input", function (event) {
+    var lyricsBox = document.getElementById("own-lyrics");
+    ["keyup", "mouseup", "select", "focus"].forEach(function (name) {
+      lyricsBox.addEventListener(name, rememberLyricsCaret);
+    });
+    lyricsBox.addEventListener("input", function (event) {
       state.ownLyrics = event.target.value;
+      rememberLyricsCaret();
       paintLyricsPreview();
+    });
+    document.getElementById("btn-insert-voice").addEventListener("click", function () {
+      var who = document.getElementById("tag-who").value;
+      var how = document.getElementById("tag-how").value;
+      var parts = [who, how].filter(Boolean);
+      if (!parts.length) {
+        toast("Choisis qui ou la façon");
+        return;
+      }
+      insertLyricTag("[" + parts.join(", ") + "]");
+    });
+    document.getElementById("btn-insert-place").addEventListener("click", function () {
+      var place = document.getElementById("tag-place").value;
+      if (!place) {
+        toast("Choisis une place");
+        return;
+      }
+      var clock = lyricClock(document.getElementById("tag-time").value);
+      if (clock === null) {
+        toast("Heure au format 01:30");
+        return;
+      }
+      insertLyricTag("[" + place + (clock ? " à " + clock : "") + "]");
     });
     document.getElementById("own-lyrics").addEventListener("change", function (event) {
       state.ownLyrics = event.target.value;

@@ -269,6 +269,17 @@ select, input[type="text"], input[type="number"], textarea {
   border-radius: 0;
 }
 
+.tag-menus {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+
+.tag-menus .field { margin: 0; }
+
+.tag-menus .btn { grid-column: 1 / -1; }
+
 #lyrics-preview {
   white-space: pre-wrap;
   font-family: Consolas, "Courier New", monospace;
