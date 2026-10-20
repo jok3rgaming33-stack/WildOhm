@@ -153,33 +153,41 @@
         </label>
         <p class="hint">Sec dit une voix droite dans le style, et met vibrato, chant mélodique et notes tenues dans Exclude. « MC crié » tout seul ne suffit pas : Suno ajoute souvent du vibrato.</p>
 
+        <h2>Idée</h2>
+        <label class="field">
+          <span>Le parcours</span>
+          <textarea id="idea" rows="3" spellcheck="false" placeholder="Début reggae, puis passage sur hardtek"></textarea>
+        </label>
+        <p id="idea-preview" class="hint"></p>
+        <p class="hint">Écris le parcours en français. Il est traduit en anglais dans le style, puis dans les balises d'intro et de drop. Un seul tempo par carte : Suno change mal de BPM au milieu.</p>
+
         <h2>Paroles</h2>
         <div class="tag-menus">
           <label class="field">
             <span>Qui</span>
             <select id="tag-who">
               <option value="">—</option>
-              <option value="femme">Femme</option>
-              <option value="homme">Homme</option>
-              <option value="les deux">Les deux</option>
+              <option value="Female">Female</option>
+              <option value="Male">Male</option>
+              <option value="Male and Female">Male and Female</option>
             </select>
           </label>
           <label class="field">
             <span>Façon</span>
             <select id="tag-how">
               <option value="">—</option>
-              <option value="chuchoté">Chuchoté</option>
-              <option value="hurlé">Hurlé</option>
-              <option value="parlé">Parlé</option>
-              <option value="chanté">Chanté</option>
-              <option value="choeur">Choeur</option>
-              <option value="soufflé">Soufflé</option>
-              <option value="grave">Grave</option>
-              <option value="aigu">Aigu</option>
-              <option value="radio">Radio</option>
-              <option value="mégaphone">Mégaphone</option>
-              <option value="vocodeur">Vocodeur</option>
-              <option value="sec">Sec</option>
+              <option value="Whispered">Whispered</option>
+              <option value="Shouted">Shouted</option>
+              <option value="Spoken">Spoken</option>
+              <option value="Belted">Belted</option>
+              <option value="Choir">Choir</option>
+              <option value="Breathy">Breathy</option>
+              <option value="Low Voice">Low Voice</option>
+              <option value="High Voice">High Voice</option>
+              <option value="Radio Filter">Radio Filter</option>
+              <option value="Megaphone">Megaphone</option>
+              <option value="Vocoder">Vocoder</option>
+              <option value="Dry">Dry</option>
             </select>
           </label>
           <button type="button" id="btn-insert-voice" class="btn tiny ghost">Poser la voix</button>
@@ -187,14 +195,14 @@
             <span>Place</span>
             <select id="tag-place">
               <option value="">—</option>
-              <option value="drop">Drop</option>
-              <option value="montée">Montée</option>
-              <option value="silence">Silence</option>
-              <option value="couplet">Couplet</option>
-              <option value="refrain">Refrain</option>
-              <option value="pont">Pont</option>
-              <option value="intro">Intro</option>
-              <option value="fin">Fin</option>
+              <option value="Drop">Drop</option>
+              <option value="Build">Build</option>
+              <option value="Break">Break</option>
+              <option value="Verse">Verse</option>
+              <option value="Chorus">Chorus</option>
+              <option value="Bridge">Bridge</option>
+              <option value="Intro">Intro</option>
+              <option value="Outro">Outro</option>
             </select>
           </label>
           <label class="field">
@@ -208,7 +216,7 @@
           <textarea id="own-lyrics" rows="9" spellcheck="false" placeholder="Les mots à dire, sous la balise."></textarea>
         </label>
         <p id="lyrics-preview" class="hint"></p>
-        <p class="hint">La balise se pose au curseur. Écris les mots juste en dessous. Vide : l'appli écrit les paroles.</p>
+        <p class="hint">Les choix sont en anglais, c'est ce que Suno lit. La balise se pose au curseur. Écris les mots juste en dessous. Vide : l'appli écrit les paroles. Tu peux encore taper une balise française à la main.</p>
 
         <h2>Demandes</h2>
         <label class="field">

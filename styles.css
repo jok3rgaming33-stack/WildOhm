@@ -280,7 +280,8 @@ select, input[type="text"], input[type="number"], textarea {
 
 .tag-menus .btn { grid-column: 1 / -1; }
 
-#lyrics-preview {
+#lyrics-preview,
+#idea-preview {
   white-space: pre-wrap;
   font-family: Consolas, "Courier New", monospace;
   text-transform: none;

@@ -58,7 +58,8 @@
       demands: "",
       intro: "vary",
       phrase: "sec",
-      ownLyrics: ""
+      ownLyrics: "",
+      idea: ""
     };
   }
 
@@ -74,6 +75,7 @@
     var intro = state.intro;
     var phrase = state.phrase;
     var ownLyrics = state.ownLyrics;
+    var idea = state.idea;
     state = defaultState();
     state.presetId = preset.id;
     state.seed = keepSeed ? seed : seed;
@@ -87,6 +89,7 @@
     state.intro = intro || "vary";
     state.phrase = phrase || "sec";
     state.ownLyrics = ownLyrics || "";
+    state.idea = idea || "";
     var g = preset.apply.genres || {};
     Object.keys(state.genres).forEach(function (id) {
       state.genres[id] = g[id] || 0;
@@ -225,6 +228,8 @@
     if (demands && demands.value !== (state.demands || "")) demands.value = state.demands || "";
     var ownLyrics = document.getElementById("own-lyrics");
     if (ownLyrics && ownLyrics.value !== (state.ownLyrics || "")) ownLyrics.value = state.ownLyrics || "";
+    var idea = document.getElementById("idea");
+    if (idea && idea.value !== (state.idea || "")) idea.value = state.idea || "";
     document.getElementById("length").value = state.length;
     document.getElementById("intro").value = state.intro || "vary";
     document.getElementById("phrase").value = state.phrase || "sec";
@@ -239,6 +244,7 @@
     paintKeyHelp();
     paintDemandPreview();
     paintLyricsPreview();
+    paintIdeaPreview();
   }
 
   function paintKeyHelp() {
@@ -262,6 +268,21 @@
     box.textContent = bits.join(" · ");
   }
 
+  function paintIdeaPreview() {
+    var box = document.getElementById("idea-preview");
+    if (!box) return;
+    var info = ENGINE.interpretIdea(state.idea || "");
+    var bits = [];
+    if (info.styleTag) bits.push("Style : " + info.styleTag);
+    if (info.sections && info.sections.length) {
+      bits.push(info.sections.map(function (section) {
+        return "[" + section.tag + (section.text ? ": " + section.text : "") + "]";
+      }).join("\n"));
+    }
+    (info.hints || []).forEach(function (hint) { bits.push(hint); });
+    box.textContent = bits.join("\n");
+  }
+
   function paintLyricsPreview() {
     var box = document.getElementById("lyrics-preview");
     var fitted = ENGINE.fitOwnLyrics(state.ownLyrics || "", state);
@@ -278,6 +299,8 @@
     if (demands) state.demands = demands.value;
     var ownLyrics = document.getElementById("own-lyrics");
     if (ownLyrics) state.ownLyrics = ownLyrics.value;
+    var idea = document.getElementById("idea");
+    if (idea) state.idea = idea.value;
     var theme = document.getElementById("theme");
     if (theme) state.theme = theme.value;
   }
@@ -640,6 +663,7 @@
     renderDiagnosis();
     paintDemandPreview();
     paintLyricsPreview();
+    paintIdeaPreview();
     saveStore();
   }
 
@@ -765,12 +789,12 @@
     document.getElementById("btn-insert-voice").addEventListener("click", function () {
       var who = document.getElementById("tag-who").value;
       var how = document.getElementById("tag-how").value;
-      var parts = [who, how].filter(Boolean);
+      var parts = [how, who].filter(Boolean);
       if (!parts.length) {
         toast("Choisis qui ou la façon");
         return;
       }
-      insertLyricTag("[" + parts.join(", ") + "]");
+      insertLyricTag("[" + parts.join(" ") + "]");
     });
     document.getElementById("btn-insert-place").addEventListener("click", function () {
       var place = document.getElementById("tag-place").value;
@@ -783,7 +807,15 @@
         toast("Heure au format 01:30");
         return;
       }
-      insertLyricTag("[" + place + (clock ? " à " + clock : "") + "]");
+      insertLyricTag("[" + place + (clock ? " at " + clock : "") + "]");
+    });
+    document.getElementById("idea").addEventListener("input", function (event) {
+      state.idea = event.target.value;
+      paintIdeaPreview();
+    });
+    document.getElementById("idea").addEventListener("change", function (event) {
+      state.idea = event.target.value;
+      commit(true);
     });
     document.getElementById("own-lyrics").addEventListener("change", function (event) {
       state.ownLyrics = event.target.value;

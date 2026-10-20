@@ -467,7 +467,8 @@
       demands: state.demands || "",
       intro: state.intro || "vary",
       phrase: state.phrase || "sec",
-      ownLyrics: state.ownLyrics || ""
+      ownLyrics: state.ownLyrics || "",
+      idea: state.idea || ""
     };
   }
 
@@ -909,7 +910,7 @@
         var re = new RegExp("\\[" + anchor.name + "(?::[^\\]]*)?\\]", "i");
         var found = text.match(re);
         if (!found) continue;
-        var clockOnDetailed = starts && /^\[intro at /i.test(cue) && /^\[intro:/i.test(found[0]);
+        var clockOnDetailed = starts && /\sat \d/.test(low) && found[0].indexOf(":") !== -1;
         text = (clockOnDetailed || related) ? text.replace(re, found[0] + "\n" + cue) : text.replace(re, cue);
         placed = true;
         break;
@@ -928,8 +929,9 @@
     return bank[Math.floor(rng() * bank.length)];
   }
 
-  function assemble(genres, mood, vocal, instruments, extras, bpm, introTag) {
+  function assemble(genres, mood, vocal, instruments, extras, bpm, introTag, ideaTag) {
     var head = [];
+    if (ideaTag) head.push(ideaTag);
     if (introTag) head.push(introTag);
     head = head.concat(genres.slice(0, 2), [mood, vocal]);
     var body = [];
@@ -1096,7 +1098,7 @@
     return problems;
   }
 
-  var CUE_FILLER = { a: 1, de: 1, du: 1, des: 1, la: 1, le: 1, les: 1, en: 1, et: 1, au: 1, aux: 1, un: 1, une: 1, puis: 1, the: 1, and: 1, with: 1 };
+  var CUE_FILLER = { a: 1, de: 1, du: 1, des: 1, la: 1, le: 1, les: 1, en: 1, et: 1, au: 1, aux: 1, un: 1, une: 1, puis: 1, the: 1, and: 1, with: 1, at: 1, vocal: 1, vocals: 1, voice: 1, filter: 1 };
   var CUE_LEX = {
     drop: { section: "Drop" },
     build: { section: "Build" },
@@ -1133,11 +1135,13 @@
     crie: { delivery: "shout" },
     scream: { delivery: "shout" },
     shout: { delivery: "shout" },
+    shouted: { delivery: "shout" },
     gueule: { delivery: "shout" },
     parle: { delivery: "spoken" },
     spoken: { delivery: "spoken" },
     chante: { delivery: "sung" },
     sing: { delivery: "sung" },
+    sung: { delivery: "sung" },
     belted: { delivery: "sung" },
     choeur: { delivery: "choir" },
     choir: { delivery: "choir" },
@@ -1146,7 +1150,9 @@
     souffle: { tone: "breathy" },
     breathy: { tone: "breathy" },
     grave: { tone: "low" },
+    low: { tone: "low" },
     aigu: { tone: "high" },
+    high: { tone: "high" },
     radio: { tone: "radio" },
     megaphone: { tone: "megaphone" },
     vocodeur: { tone: "vocoder" },
@@ -1170,6 +1176,7 @@
     var clock = clockOf(line);
     var norm = foldCue(line)
       .replace(/[\[\]\(\)]/g, " ")
+      .replace(/male and female|female and male/g, " lesdeux ")
       .replace(/homme et femme|femme et homme/g, " lesdeux ")
       .replace(/les deux/g, " lesdeux ")
       .replace(/sans vibrato/g, " sec ");
@@ -1365,7 +1372,7 @@
     if (seen.words && !styled.vocalTag) {
       styled.vocalTag = phrase === "sec" || phrase === "crie" ? "dry spoken vocal straight tone" : "spoken vocal";
       styled.vocalMode = "mc";
-      hints.push("Pas de consigne de voix : parlé par défaut. Précise par exemple [femme, chuchoté].");
+      hints.push("Pas de consigne de voix : parlé par défaut. Précise par exemple [Whispered Female].");
     }
     blocked.forEach(function (line) {
       hints.push("Ligne retirée : " + line);
@@ -1378,6 +1385,141 @@
       blocked: blocked,
       preview: text.trim()
     };
+  }
+
+  var IDEA_GENRES = [
+    { re: /frenchcore|french core/i, style: "frenchcore", lyric: "frenchcore kick, distorted tail, festival riff" },
+    { re: /mental/i, style: "mental hardtek", lyric: "mental hardtek, raw distorted kick" },
+    { re: /hardtek|hard tek|\btekno\b/i, style: "hardtek", lyric: "fast hardtek, distorted kick, saturated bass" },
+    { re: /hard techno|hardtechno/i, style: "hard techno", lyric: "industrial hard techno, pounding kick" },
+    { re: /psytrance|psy trance|full[- ]?on/i, style: "psytrance", lyric: "psytrance roll, psychedelic lead" },
+    { re: /\bpsy\b/i, style: "psytrance", lyric: "psytrance roll, psychedelic lead" },
+    { re: /progressif|progressive/i, style: "progressive psy", lyric: "progressive psytrance, long hypnotic groove" },
+    { re: /trance/i, style: "trance", lyric: "uplifting trance, supersaw lead" },
+    { re: /didgeridoo|didj|tribal|tribu/i, style: "tribal", lyric: "tribal groove, didgeridoo, hand drums" },
+    { re: /reggae|ragga/i, style: "reggae", lyric: "reggae groove, offbeat skank, warm bass" },
+    { re: /\bdub\b/i, style: "dub reggae", lyric: "dub bass, spring reverb, sparse skank" },
+    { re: /\bacide\b|\bacid\b|303/i, style: "acid 303", lyric: "resonant TB-303 acid line" },
+    { re: /ambient|drone|planant/i, style: "ambient drone", lyric: "ambient drone, sparse texture" },
+    { re: /drum and bass|drum n bass|\bdnb\b|jungle/i, style: "drum and bass", lyric: "drum and bass breakbeat, deep rolling bass" },
+    { re: /dubstep/i, style: "dubstep", lyric: "dubstep bass, half-time drop" },
+    { re: /gabber/i, style: "gabber", lyric: "gabber kick, distorted bass" },
+    { re: /hardcore/i, style: "hardcore", lyric: "hardcore kick, distorted bass" },
+    { re: /\bhouse\b/i, style: "house", lyric: "house groove, swinging hats" },
+    { re: /\btechno\b/i, style: "techno", lyric: "techno kick, hypnotic loop" },
+    { re: /hip ?hop|\brap\b/i, style: "hip hop", lyric: "hip hop pocket, deep bass" },
+    { re: /breakbeat|break beat/i, style: "breakbeat", lyric: "breakbeat drums, syncopated bass" }
+  ];
+
+  var IDEA_ADJECTIVES = [
+    { re: /sombre|dark|nuit/i, en: "dark" },
+    { re: /rapide|fast|speed/i, en: "fast" },
+    { re: /lent\b|slow/i, en: "slow" },
+    { re: /tribal/i, en: "tribal" },
+    { re: /melodique|melodic/i, en: "melodic" },
+    { re: /lourd|heavy/i, en: "heavy" },
+    { re: /minimal/i, en: "minimal" },
+    { re: /psychedelique|psychedelic/i, en: "psychedelic" },
+    { re: /festif|festive/i, en: "festive" },
+    { re: /industriel|industrial/i, en: "industrial" },
+    { re: /hypnotique|hypnotic/i, en: "hypnotic" }
+  ];
+
+  function ideaSection(part) {
+    var text = foldCue(part);
+    if (/intro|debut|depart|commence|ouverture|\bstart\b/.test(text)) return "Intro";
+    if (/outro|\bfin\b|termine|\bend\b/.test(text)) return "Outro";
+    if (/drop/.test(text)) return "Drop";
+    if (/montee|build/.test(text)) return "Build";
+    if (/silence|pause|\bbreak\b/.test(text)) return "Break";
+    if (/refrain|chorus/.test(text)) return "Chorus";
+    if (/couplet|verse/.test(text)) return "Verse";
+    if (/\bpont\b|bridge/.test(text)) return "Bridge";
+    return "";
+  }
+
+  function ideaRole(index, total, explicit) {
+    if (explicit) return explicit;
+    if (total <= 1) return "Drop";
+    if (index === 0) return "Intro";
+    if (index === total - 1) return "Drop";
+    return "Break";
+  }
+
+  function interpretIdea(raw) {
+    var empty = { styleTag: "", sections: [], hints: [], blocked: "" };
+    var source = String(raw || "").replace(/\s+/g, " ").trim();
+    if (!source) return empty;
+    if (containsBanned(source) || DEMAND_BLOCK.test(source)) {
+      return { styleTag: "", sections: [], hints: ["Idée non reprise : copie ou nom d'artiste."], blocked: source };
+    }
+    var folded = foldCue(source);
+    var bits = folded.split(/\s*(?:,|;|\bpuis\b|\bensuite\b|\bapres\b|\bthen\b|\binto\b|passage\s+(?:sur|en|vers|a)\b|bascule\s+(?:sur|en|vers|a)\b|passe\s+(?:sur|en|a)\b)\s*/i);
+    bits = bits.map(function (bit) { return bit.trim(); }).filter(Boolean).slice(0, 4);
+    var parts = bits.map(function (bit) {
+      var genre = null;
+      for (var i = 0; i < IDEA_GENRES.length; i++) {
+        if (IDEA_GENRES[i].re.test(bit)) {
+          genre = IDEA_GENRES[i];
+          break;
+        }
+      }
+      var ads = [];
+      IDEA_ADJECTIVES.forEach(function (item) {
+        if (item.re.test(bit) && ads.indexOf(item.en) === -1) ads.push(item.en);
+      });
+      if (genre && genre.style === "acid 303") ads = ads.filter(function (word) { return word !== "acid"; });
+      return { genre: genre, ads: ads, section: ideaSection(bit) };
+    }).filter(function (part) { return part.genre || part.ads.length || part.section; });
+    if (!parts.length) {
+      return { styleTag: "", sections: [], hints: ["Aucun style reconnu. Essaie reggae, hardtek, psytrance, trance, hard techno."], blocked: "" };
+    }
+    var styleBits = [];
+    var sections = [];
+    parts.forEach(function (part, index) {
+      var role = ideaRole(index, parts.length, part.section);
+      var styleName = part.genre ? part.genre.style : "";
+      var lyric = part.genre ? part.genre.lyric : "";
+      var extra = part.ads.filter(function (word) {
+        return lyric.indexOf(word) === -1 && styleName.indexOf(word) === -1;
+      });
+      var stylePiece = (extra.join(" ") + " " + styleName).replace(/\s+/g, " ").trim();
+      if (role === "Intro") stylePiece = (stylePiece + " intro").trim();
+      else if (role === "Drop") stylePiece = (stylePiece + " drop").trim();
+      else if (role === "Break") stylePiece = (stylePiece + " break").trim();
+      else if (role === "Build") stylePiece = (stylePiece + " build").trim();
+      else if (role === "Outro") stylePiece = (stylePiece + " outro").trim();
+      if (stylePiece && stylePiece !== role.toLowerCase()) styleBits.push(stylePiece);
+      var lyricText = (extra.join(" ") + " " + lyric).replace(/\s+/g, " ").trim();
+      sections.push({ tag: role, text: lyricText });
+    });
+    var styleTag = styleBits.join(" then ").replace(/\s+/g, " ").trim();
+    if (styleTag.length > 90) styleTag = styleTag.slice(0, 90).replace(/\s+\S*$/, "");
+    var hints = [];
+    if (parts.length > 1) hints.push("Un seul tempo par carte. Suno change mal de BPM au milieu : le parcours est décrit, le BPM reste celui de la famille.");
+    return { styleTag: styleTag, sections: sections, hints: hints, blocked: "" };
+  }
+
+  function applyIdeaLyrics(lyrics, idea) {
+    if (!idea || !idea.sections || !idea.sections.length) return lyrics;
+    var text = lyrics;
+    idea.sections.forEach(function (section) {
+      if (!section.text) {
+        if (section.tag === "Break" && !hasSection(text, "Break") && /\[Drop/i.test(text)) {
+          text = text.replace(/\[Drop/i, "[Break]\n[Drop");
+        }
+        return;
+      }
+      var detailed = "[" + section.tag + ": " + section.text + "]";
+      var bare = new RegExp("\\[" + section.tag + "\\]", "i");
+      if (bare.test(text)) {
+        text = text.replace(bare, detailed);
+        return;
+      }
+      if (hasSection(text, section.tag)) return;
+      if (text.indexOf("[Outro]") !== -1) text = text.replace("[Outro]", detailed + "\n[Outro]");
+    });
+    return text;
   }
 
   function generateOne(state, variant, rng) {
@@ -1402,12 +1544,20 @@
     var vocal = fitted.vocalTag || vocalTag(vocalMode, tuned.voiceGender, tuned.phrase);
     var instruments = buildInstruments(plan.lane, tuned, rng);
     var bpmInfo = resolveBpm(tuned, plan.lane, variant, rng);
-    var tags = assemble(genres, mood, vocal, instruments, demand.styleTags, bpmInfo.bpm, intro && intro.style);
+    var idea = interpretIdea(tuned.idea);
+    var ideaTag = idea.styleTag && idea.styleTag.indexOf(",") === -1 ? idea.styleTag : "";
+    var ideaOwnsIntro = (idea.sections || []).some(function (section) {
+      return section.tag === "Intro" && section.text;
+    });
+    var introStyle = ideaOwnsIntro ? "" : (intro && intro.style);
+    var leadCount = (ideaTag ? 1 : 0) + (introStyle ? 1 : 0);
+    var tags = assemble(genres, mood, vocal, instruments, demand.styleTags, bpmInfo.bpm, introStyle, ideaTag);
     var warnings = demand.blocked.map(function (line) {
       return "Demande non reprise : " + line;
     }).concat((fitted.blocked || []).map(function (line) {
       return "Parole non reprise : " + line;
     }));
+    if (idea.blocked) warnings.push("Idée non reprise : copie ou nom d'artiste.");
     if (bpmInfo.forced && (bpmInfo.bpm < bpmInfo.range[0] - 6 || bpmInfo.bpm > bpmInfo.range[1] + 6)) {
       warnings.push("BPM " + bpmInfo.bpm + " hors de la zone " + bpmInfo.range[0] + "–" + bpmInfo.range[1] + " pour " + LANE_FR[plan.lane] + ". Suno peut changer de genre.");
     }
@@ -1422,15 +1572,15 @@
       bpmAuto: tuned.bpmAuto,
       title: makeTitle(plan.lane, tuned.theme, rng),
       tags: tags,
-      roles: tagRoles(tags, genres.length, intro ? 1 : 0),
+      roles: tagRoles(tags, genres.length, leadCount),
       genreCount: genres.length,
-      introCount: intro ? 1 : 0,
+      introCount: leadCount,
       style: tags.join(", "),
       exclude: excludesFor(plan.lane, vocalMode, tuned.phrase, intro).join(", "),
       lyrics: fitted.text
-        ? weaveCues(applyIntroLyric(fitted.text, intro), demand.cues)
+        ? weaveCues(applyIntroLyric(applyIdeaLyrics(fitted.text, idea), intro), demand.cues)
         : weaveCues(
-          applyPhraseLyric(applyIntroLyric(makeLyrics(tuned, rng), intro), vocalMode, tuned.phrase),
+          applyPhraseLyric(applyIntroLyric(applyIdeaLyrics(makeLyrics(tuned, rng), idea), intro), vocalMode, tuned.phrase),
           demand.cues
         ),
       vocalTag: vocal,
@@ -1497,6 +1647,7 @@
     selfCheck: selfCheck,
     scoresOf: scoresOf,
     interpretDemands: interpretDemands,
-    fitOwnLyrics: fitOwnLyrics
+    fitOwnLyrics: fitOwnLyrics,
+    interpretIdea: interpretIdea
   };
 })(typeof globalThis !== "undefined" ? globalThis : this);
