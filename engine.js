@@ -593,6 +593,12 @@
       style: "sudden hard ritual entry",
       lyric: "[Intro: short silence then sudden hard entry, no long filter rise]",
       avoid: "long filter rise"
+    },
+    {
+      id: "direct",
+      style: "full kick and bass from the first beat",
+      lyric: "[Intro: full kick and bass from the first beat, the track is already moving, no drone, no filter rise, no synth riser]",
+      avoid: "synth riser"
     }
   ];
 
